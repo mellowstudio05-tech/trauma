@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "server.js"
+    },
+    {
+      "src": "/",
+      "dest": "server.js"
+    }
+  ],
+  "env": {
+    "WEBFLOW_API_TOKEN": "@webflow_api_token",
+    "WEBFLOW_COLLECTION_ID": "@webflow_collection_id"
+  },
+  "crons": [
+    {
+      "path": "/api/scrape",
+      "schedule": "0 7 * * *"
+    }
+  ]
+}
+

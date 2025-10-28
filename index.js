@@ -13,7 +13,7 @@ async function main() {
     }
 
     // Initialize Webflow API
-    const webflow = new WebflowAPI(process.env.WEBFLOW_API_TOKEN);
+    const webflow = new WebflowAPI(process.env.WEBFLOW_API_TOKEN, process.env.WEBFLOW_SITE_ID);
 
     // Scrape events from source URL
     console.log('Starting scraping process...');

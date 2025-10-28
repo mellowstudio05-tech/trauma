@@ -26,15 +26,19 @@ async function main() {
     
     for (const event of scrapedData.events) {
       try {
-        // Transform event data to Webflow format - genau wie du es brauchst
+        // Transform event data to Webflow format - Blog Header ist das name Field
         const webflowData = {
-          'blog-header': event.title || event.eventName,           // Event-Titel aus Detailseite
-          'slug': (event.title || event.eventName).toLowerCase().replace(/\s+/g, '-'), // URL-friendly slug
-          'uhrzeit': event.time,                                   // Zeit (z.B. "18:30h")
-          'event-datum': event.fullDateTime || `${event.dayOfWeek}, ${event.date}, ${event.time} Uhr`, // Vollständiges Datum
-          'preis': event.price || 'Eintritt frei',                 // Preis aus Detailseite
-          'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch basierend auf Preis
-          'blog-rich-text': event.description || `${event.eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Vollständige Beschreibung
+          name: event.title || event.eventName,                    // Blog Header = name Field
+          slug: (event.title || event.eventName).toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '')                         // Entferne Sonderzeichen
+            .replace(/\s+/g, '-')                                 // Ersetze Leerzeichen mit -
+            .replace(/-+/g, '-')                                  // Entferne mehrfache -
+            .replace(/^-|-$/g, ''),                               // Entferne führende/trailing -
+          'uhrzeit': event.time,                                  // Zeit
+          'event-datum': event.fullDateTime || `${event.dayOfWeek}, ${event.date}, ${event.time} Uhr`, // Datum
+          'preis': event.price || 'Eintritt frei',                // Preis
+          'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
+          'blog-rich-text': event.description || `${event.eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
         };
 
         console.log(`Uploading: ${event.eventName}...`);

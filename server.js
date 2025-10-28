@@ -35,6 +35,30 @@ app.get('/api/health', (req, res) => {
 app.get('/api/scrape', async (req, res) => {
   try {
     console.log('Starting scrape process...');
+    console.log('Environment check:', {
+      hasApiToken: !!process.env.WEBFLOW_API_TOKEN,
+      hasSiteId: !!process.env.WEBFLOW_SITE_ID,
+      hasCollectionId: !!process.env.WEBFLOW_COLLECTION_ID,
+      apiTokenStart: process.env.WEBFLOW_API_TOKEN?.substring(0, 5) + '...'
+    });
+    
+    // Konvertiere relative Bild-URL zu vollständiger URL (globale Funktion)
+    const formatImageUrl = (imageUrl) => {
+      if (!imageUrl) return '';
+      
+      // Wenn es bereits eine vollständige URL ist
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl;
+      }
+      
+      // Wenn es ein relativer Pfad ist, füge die Domain hinzu
+      if (imageUrl.startsWith('/')) {
+        return `https://www.hessen-szene.de${imageUrl}`;
+      }
+      
+      // Falls es ein anderer Pfad ist
+      return `https://www.hessen-szene.de/${imageUrl}`;
+    };
     
     // Scrape content from the URL
     const scrapedData = await scrapeContent();
@@ -54,19 +78,6 @@ app.get('/api/scrape', async (req, res) => {
         if (existingItem) {
           console.log(`🔄 Event "${eventName}" already exists. Updating...`);
           
-          // Bild zu Webflow hochladen (falls vorhanden)
-          let blogImageId = null;
-          if (event.imageUrl) {
-            try {
-              const fullImageUrl = formatImageUrl(event.imageUrl);
-              const filename = `${eventName.replace(/[^a-z0-9]/gi, '-')}-${Date.now()}.jpg`;
-              console.log(`Uploading new image: ${filename}...`);
-              blogImageId = await webflow.uploadImage(fullImageUrl, filename);
-              console.log(`✅ New image uploaded: ${filename}`);
-            } catch (error) {
-              console.error(`❌ Failed to upload new image for ${eventName}:`, error.message);
-            }
-          }
 
           // Datum für Webflow Date Field formatieren
           const formatDateForWebflow = (event) => {
@@ -121,23 +132,6 @@ app.get('/api/scrape', async (req, res) => {
             return null;
           };
 
-          // Konvertiere relative Bild-URL zu vollständiger URL
-          const formatImageUrl = (imageUrl) => {
-            if (!imageUrl) return '';
-            
-            // Wenn es bereits eine vollständige URL ist
-            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-              return imageUrl;
-            }
-            
-            // Wenn es ein relativer Pfad ist, füge die Domain hinzu
-            if (imageUrl.startsWith('/')) {
-              return `https://www.hessen-szene.de${imageUrl}`;
-            }
-            
-            // Falls es ein anderer Pfad ist
-            return `https://www.hessen-szene.de/${imageUrl}`;
-          };
 
           // Transform event data to Webflow format - Blog Header ist das name Field
           const webflowData = {
@@ -153,7 +147,6 @@ app.get('/api/scrape', async (req, res) => {
             'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
             'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
             'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
-            'blog-image': blogImageId,                            // Uploaded Image Asset ID
           };
 
           // Update existing item
@@ -174,19 +167,6 @@ app.get('/api/scrape', async (req, res) => {
         } else {
           console.log(`➕ Event "${eventName}" is new. Creating...`);
           
-          // Bild zu Webflow hochladen (falls vorhanden)
-          let blogImageId = null;
-          if (event.imageUrl) {
-            try {
-              const fullImageUrl = formatImageUrl(event.imageUrl);
-              const filename = `${eventName.replace(/[^a-z0-9]/gi, '-')}-${Date.now()}.jpg`;
-              console.log(`Uploading image: ${filename}...`);
-              blogImageId = await webflow.uploadImage(fullImageUrl, filename);
-              console.log(`✅ Image uploaded: ${filename}`);
-            } catch (error) {
-              console.error(`❌ Failed to upload image for ${eventName}:`, error.message);
-            }
-          }
 
           // Datum für Webflow Date Field formatieren
           const formatDateForWebflow = (event) => {
@@ -241,23 +221,6 @@ app.get('/api/scrape', async (req, res) => {
             return null;
           };
 
-          // Konvertiere relative Bild-URL zu vollständiger URL
-          const formatImageUrl = (imageUrl) => {
-            if (!imageUrl) return '';
-            
-            // Wenn es bereits eine vollständige URL ist
-            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-              return imageUrl;
-            }
-            
-            // Wenn es ein relativer Pfad ist, füge die Domain hinzu
-            if (imageUrl.startsWith('/')) {
-              return `https://www.hessen-szene.de${imageUrl}`;
-            }
-            
-            // Falls es ein anderer Pfad ist
-            return `https://www.hessen-szene.de/${imageUrl}`;
-          };
 
           // Transform event data to Webflow format - Blog Header ist das name Field
           const webflowData = {
@@ -273,7 +236,6 @@ app.get('/api/scrape', async (req, res) => {
             'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
             'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
             'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
-            'blog-image': blogImageId,                            // Uploaded Image Asset ID
           };
 
           console.log(`Creating: ${eventName}...`);
@@ -305,7 +267,7 @@ app.get('/api/scrape', async (req, res) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
-        console.error(`Error processing event ${eventName}:`, error.message);
+        console.error(`Error processing event ${eventName || 'unknown'}:`, error.message);
         continue;
       }
     }
@@ -353,19 +315,6 @@ app.post('/api/scrape', async (req, res) => {
         if (existingItem) {
           console.log(`🔄 Event "${eventName}" already exists. Updating...`);
           
-          // Bild zu Webflow hochladen (falls vorhanden)
-          let blogImageId = null;
-          if (event.imageUrl) {
-            try {
-              const fullImageUrl = formatImageUrl(event.imageUrl);
-              const filename = `${eventName.replace(/[^a-z0-9]/gi, '-')}-${Date.now()}.jpg`;
-              console.log(`Uploading new image: ${filename}...`);
-              blogImageId = await webflow.uploadImage(fullImageUrl, filename);
-              console.log(`✅ New image uploaded: ${filename}`);
-            } catch (error) {
-              console.error(`❌ Failed to upload new image for ${eventName}:`, error.message);
-            }
-          }
 
           // Datum für Webflow Date Field formatieren
           const formatDateForWebflow = (event) => {
@@ -420,23 +369,6 @@ app.post('/api/scrape', async (req, res) => {
             return null;
           };
 
-          // Konvertiere relative Bild-URL zu vollständiger URL
-          const formatImageUrl = (imageUrl) => {
-            if (!imageUrl) return '';
-            
-            // Wenn es bereits eine vollständige URL ist
-            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-              return imageUrl;
-            }
-            
-            // Wenn es ein relativer Pfad ist, füge die Domain hinzu
-            if (imageUrl.startsWith('/')) {
-              return `https://www.hessen-szene.de${imageUrl}`;
-            }
-            
-            // Falls es ein anderer Pfad ist
-            return `https://www.hessen-szene.de/${imageUrl}`;
-          };
 
           // Transform event data to Webflow format - Blog Header ist das name Field
           const webflowData = {
@@ -452,7 +384,6 @@ app.post('/api/scrape', async (req, res) => {
             'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
             'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
             'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
-            'blog-image': blogImageId,                            // Uploaded Image Asset ID
           };
 
           // Update existing item
@@ -473,19 +404,6 @@ app.post('/api/scrape', async (req, res) => {
         } else {
           console.log(`➕ Event "${eventName}" is new. Creating...`);
           
-          // Bild zu Webflow hochladen (falls vorhanden)
-          let blogImageId = null;
-          if (event.imageUrl) {
-            try {
-              const fullImageUrl = formatImageUrl(event.imageUrl);
-              const filename = `${eventName.replace(/[^a-z0-9]/gi, '-')}-${Date.now()}.jpg`;
-              console.log(`Uploading image: ${filename}...`);
-              blogImageId = await webflow.uploadImage(fullImageUrl, filename);
-              console.log(`✅ Image uploaded: ${filename}`);
-            } catch (error) {
-              console.error(`❌ Failed to upload image for ${eventName}:`, error.message);
-            }
-          }
 
           // Datum für Webflow Date Field formatieren
           const formatDateForWebflow = (event) => {
@@ -540,23 +458,6 @@ app.post('/api/scrape', async (req, res) => {
             return null;
           };
 
-          // Konvertiere relative Bild-URL zu vollständiger URL
-          const formatImageUrl = (imageUrl) => {
-            if (!imageUrl) return '';
-            
-            // Wenn es bereits eine vollständige URL ist
-            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-              return imageUrl;
-            }
-            
-            // Wenn es ein relativer Pfad ist, füge die Domain hinzu
-            if (imageUrl.startsWith('/')) {
-              return `https://www.hessen-szene.de${imageUrl}`;
-            }
-            
-            // Falls es ein anderer Pfad ist
-            return `https://www.hessen-szene.de/${imageUrl}`;
-          };
 
           // Transform event data to Webflow format - Blog Header ist das name Field
           const webflowData = {
@@ -572,7 +473,6 @@ app.post('/api/scrape', async (req, res) => {
             'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
             'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
             'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
-            'blog-image': blogImageId,                            // Uploaded Image Asset ID
           };
 
           console.log(`Creating: ${eventName}...`);
@@ -604,7 +504,7 @@ app.post('/api/scrape', async (req, res) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
-        console.error(`Error processing event ${eventName}:`, error.message);
+        console.error(`Error processing event ${eventName || 'unknown'}:`, error.message);
         continue;
       }
     }

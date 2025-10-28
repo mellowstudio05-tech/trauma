@@ -242,15 +242,15 @@ async function main() {
             action: 'created'
           });
 
-          // Publish the item (mit besserem Error Handling)
-          try {
-            console.log(`Publishing: ${eventName}...`);
-            await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
-            console.log(`✅ Published: ${eventName}`);
-          } catch (publishError) {
-            console.error(`❌ Failed to publish ${eventName}:`, publishError.message);
-            console.log(`⚠️ Event ${eventName} uploaded but not published. You may need to publish manually.`);
-          }
+        // Publish the item automatically
+        try {
+          console.log(`🚀 Publishing: ${eventName}...`);
+          await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
+          console.log(`✅ Published: ${eventName}`);
+        } catch (publishError) {
+          console.error(`❌ Failed to publish ${eventName}:`, publishError.message);
+          console.log(`⚠️ Event ${eventName} uploaded but not published. You may need to publish manually.`);
+        }
 
           console.log(`✅ Created: ${eventName}`);
         }

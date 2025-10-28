@@ -30,13 +30,15 @@ class WebflowAPI {
       const response = await axios.post(
         `${this.baseURL}/collections/${collectionId}/items`,
         {
-          fieldData: data
+          items: [{
+            fieldData: data
+          }]
         },
         { headers: this.headers }
       );
       
       console.log('Item created in Webflow CMS:', response.data);
-      return response.data;
+      return response.data.items[0];
     } catch (error) {
       console.error('Error creating item in Webflow:', error.response?.data || error.message);
       throw error;

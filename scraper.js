@@ -42,6 +42,9 @@ async function scrapeEvents(url) {
         const eventLink = $eventLink.attr('href');
         const eventId = eventLink ? eventLink.match(/eventDate%5D=(\d+)/)?.[1] : '';
         
+        // Detailseite URL erstellen
+        const detailUrl = eventLink ? new URL(eventLink, 'https://www.hessen-szene.de').href : '';
+        
         // Ort extrahieren
         const location = $row.find('td').eq(3).text().trim().replace(/\s+/g, ' ');
         
@@ -54,7 +57,7 @@ async function scrapeEvents(url) {
             dayOfWeek: dayOfWeek,
             time: time,
             eventName: eventName,
-            eventLink: eventLink ? new URL(eventLink, 'https://www.hessen-szene.de').href : '',
+            eventLink: detailUrl,
             eventId: eventId,
             location: location,
             category: category,
@@ -68,6 +71,24 @@ async function scrapeEvents(url) {
     });
     
     console.log(`Found ${events.length} events`);
+    
+    // Detailseiten für zusätzliche Informationen laden
+    console.log('Loading event details...');
+    for (let i = 0; i < events.length; i++) {
+      if (events[i].eventLink) {
+        try {
+          const details = await scrapeEventDetails(events[i].eventLink);
+          events[i] = { ...events[i], ...details };
+          console.log(`Loaded details for: ${events[i].eventName}`);
+          
+          // Delay zwischen Requests um Rate Limits zu vermeiden
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        } catch (error) {
+          console.error(`Failed to load details for ${events[i].eventName}:`, error.message);
+        }
+      }
+    }
+    
     return events;
     
   } catch (error) {
@@ -92,5 +113,61 @@ async function scrapeContent(url) {
   };
 }
 
-module.exports = { scrapeContent, scrapeEvents };
+/**
+ * Scrapes additional details from event detail page
+ * @param {string} detailUrl - URL of the event detail page
+ * @returns {Promise<Object>} Additional event details
+ */
+async function scrapeEventDetails(detailUrl) {
+  try {
+    console.log(`Scraping details from: ${detailUrl}`);
+    
+    const response = await axios.get(detailUrl, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      }
+    });
+    
+    const $ = cheerio.load(response.data);
+    
+    // Extrahiere Details aus der Detailseite
+    const details = {
+      // Event-Titel (für Blog Header)
+      title: $('h1.pb-2').text().trim(),
+      
+      // Vollständiges Datum und Zeit (für Event Datum)
+      fullDateTime: $('.event-single-view-datetime strong').text().trim(),
+      
+      // Veranstaltungsbeginn
+      startTime: $('.event-single-view-time p').text().trim(),
+      
+      // Kategorie
+      category: $('.event-single-view-category').text().replace('Kategorie:', '').trim(),
+      
+      // Ort mit vollständiger Adresse
+      fullLocation: $('.event-single-view-contact .col:last-child p').html(),
+      
+      // Event-Bild
+      imageUrl: $('.single-event-image img').attr('src'),
+      imageAlt: $('.single-event-image img').attr('alt'),
+      
+      // Beschreibung (für Blog Rich Text)
+      description: $('.event-single-view-desc').text().trim(),
+      
+      // Eintrittspreis
+      price: $('.event-single-view-fee p').text().trim(),
+      
+      // Hotline (falls vorhanden)
+      hotline: $('.event-single-view-contact p').text().match(/Hotline: (\d+)/)?.[1] || '',
+    };
+    
+    return details;
+    
+  } catch (error) {
+    console.error(`Error scraping details from ${detailUrl}:`, error.message);
+    return {};
+  }
+}
+
+module.exports = { scrapeContent, scrapeEvents, scrapeEventDetails };
 

@@ -50,7 +50,7 @@ async function scrapeHandler(req, res) {
     }
 
     // Initialize Webflow API
-    const webflow = new WebflowAPI(process.env.WEBFLOW_API_TOKEN);
+    const webflow = new WebflowAPI(process.env.WEBFLOW_API_TOKEN, process.env.WEBFLOW_SITE_ID);
 
     // Scrape events
     console.log(`Starting scraping process for: ${targetUrl}`);

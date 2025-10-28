@@ -156,29 +156,31 @@ class WebflowAPI {
   }
   async publishItem(collectionId, itemId) {
     try {
-      // Webflow v2 API verwendet einen anderen Endpoint für Publishing
+      // Webflow API v2 - Item Publishing (neueste Methode)
       const response = await axios.post(
-        `${this.baseURL}/collections/${collectionId}/items/${itemId}/publish`,
+        `https://api.webflow.com/v2/collections/${collectionId}/items/${itemId}/publish`,
         {},
         { headers: this.headers }
       );
       
+      console.log('✅ Item published successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Error publishing item in Webflow:', error.response?.data || error.message);
+      console.error('❌ Error publishing item:', error.response?.data || error.message);
       
-      // Falls Publishing fehlschlägt, versuche es mit dem v1 API
+      // Fallback: Versuche v1 API
       try {
-        console.log('Trying v1 API for publishing...');
+        console.log('🔄 Trying v1 API as fallback...');
         const v1Response = await axios.post(
           `https://api.webflow.com/v1/collections/${collectionId}/items/${itemId}/publish`,
           {},
           { headers: this.headers }
         );
         
+        console.log('✅ Item published with v1 API:', v1Response.data);
         return v1Response.data;
       } catch (v1Error) {
-        console.error('v1 API also failed:', v1Error.response?.data || v1Error.message);
+        console.error('❌ v1 API also failed:', v1Error.response?.data || v1Error.message);
         throw error; // Throw original error
       }
     }

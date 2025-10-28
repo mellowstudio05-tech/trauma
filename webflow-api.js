@@ -65,11 +65,44 @@ class WebflowAPI {
   }
 
   /**
-   * Publish an item (make it live)
-   * @param {string} collectionId - Collection ID
-   * @param {string} itemId - Item ID
-   * @returns {Promise<Object>} Publication result
+   * Upload an image to Webflow and return the asset ID
+   * @param {string} imageUrl - URL of the image to upload
+   * @param {string} filename - Filename for the uploaded image
+   * @returns {Promise<string>} Asset ID
    */
+  async uploadImage(imageUrl, filename) {
+    try {
+      // Lade das Bild herunter
+      const response = await axios.get(imageUrl, {
+        responseType: 'arraybuffer',
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      
+      // Konvertiere zu Base64
+      const base64 = Buffer.from(response.data).toString('base64');
+      const mimeType = response.headers['content-type'] || 'image/jpeg';
+      
+      // Upload zu Webflow
+      const uploadResponse = await axios.post(
+        `${this.baseURL}/assets`,
+        {
+          fileName: filename,
+          fileData: base64,
+          mimeType: mimeType
+        },
+        { headers: this.headers }
+      );
+      
+      console.log('Image uploaded to Webflow:', uploadResponse.data);
+      return uploadResponse.data.id;
+      
+    } catch (error) {
+      console.error('Error uploading image to Webflow:', error.response?.data || error.message);
+      throw error;
+    }
+  }
   async publishItem(collectionId, itemId) {
     try {
       const response = await axios.post(

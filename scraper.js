@@ -10,10 +10,23 @@ async function scrapeEvents(url) {
   try {
     console.log(`Scraping events from: ${url}`);
     
+    // Validate URL
+    if (!url || typeof url !== 'string') {
+      throw new Error('Invalid URL provided');
+    }
+    
+    // Check if URL is valid
+    try {
+      new URL(url);
+    } catch (e) {
+      throw new Error(`Invalid URL format: ${url}`);
+    }
+    
     const response = await axios.get(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
+      },
+      timeout: 30000 // 30 second timeout
     });
     
     const $ = cheerio.load(response.data);
@@ -166,6 +179,59 @@ async function scrapeEventDetails(detailUrl) {
   } catch (error) {
     console.error(`Error scraping details from ${detailUrl}:`, error.message);
     return {};
+  }
+}
+
+/**
+ * Main function to scrape content from hessen-szene.de
+ * @returns {Promise<Object>} Scraped data with events
+ */
+async function scrapeContent() {
+  try {
+    // Die URL von hessen-szene.de (einfache Version)
+    const url = 'https://www.hessen-szene.de/';
+    
+    console.log('Starting scrape process...');
+    console.log('URL:', url);
+    
+    // Validate URL before using it
+    if (!url || url === 'undefined') {
+      throw new Error('URL is undefined or invalid');
+    }
+    
+    const events = await scrapeEvents(url);
+    console.log(`Scraped ${events.length} events from main page`);
+    
+    // Scrape details for each event
+    const eventsWithDetails = [];
+    for (let i = 0; i < events.length; i++) {
+      const event = events[i];
+      console.log(`Scraping details for event ${i + 1}/${events.length}: ${event.eventName}`);
+      
+      try {
+        const details = await scrapeEventDetails(event.detailUrl);
+        eventsWithDetails.push({
+          ...event,
+          ...details
+        });
+        
+        // Delay to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } catch (error) {
+        console.error(`Failed to scrape details for ${event.eventName}:`, error.message);
+        eventsWithDetails.push(event); // Add event without details
+      }
+    }
+    
+    return {
+      events: eventsWithDetails,
+      scrapedAt: new Date().toISOString(),
+      totalEvents: eventsWithDetails.length
+    };
+    
+  } catch (error) {
+    console.error('Error in scrapeContent:', error.message);
+    throw error;
   }
 }
 

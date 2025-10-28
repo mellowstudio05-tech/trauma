@@ -250,9 +250,9 @@ app.get('/api/scrape', async (req, res) => {
             action: 'created'
           });
 
-          // Publish the item (mit besserem Error Handling)
+          // Publish the item automatically
           try {
-            console.log(`Publishing: ${eventName}...`);
+            console.log(`🚀 Publishing: ${eventName}...`);
             await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
             console.log(`✅ Published: ${eventName}`);
           } catch (publishError) {
@@ -487,9 +487,9 @@ app.post('/api/scrape', async (req, res) => {
             action: 'created'
           });
 
-          // Publish the item (mit besserem Error Handling)
+          // Publish the item automatically
           try {
-            console.log(`Publishing: ${eventName}...`);
+            console.log(`🚀 Publishing: ${eventName}...`);
             await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
             console.log(`✅ Published: ${eventName}`);
           } catch (publishError) {

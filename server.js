@@ -176,10 +176,10 @@ async function scrapeHandler(req, res) {
           webflowId: result.id
         });
 
-        // Optional: Publish
-        if (req.body.autoPublish) {
-          await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
-        }
+        // Publish the item (automatisch aktiviert)
+        console.log(`Publishing: ${event.eventName}...`);
+        await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
+        console.log(`✅ Published: ${event.eventName}`);
         
         // Delay to avoid rate limits
         await new Promise(resolve => setTimeout(resolve, 1000));

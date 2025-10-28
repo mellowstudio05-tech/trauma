@@ -202,26 +202,33 @@ async function scrapeContent() {
     const events = await scrapeEvents(url);
     console.log(`Scraped ${events.length} events from main page`);
     
-    // Scrape details for each event
-    const eventsWithDetails = [];
-    for (let i = 0; i < events.length; i++) {
-      const event = events[i];
-      console.log(`Scraping details for event ${i + 1}/${events.length}: ${event.eventName}`);
-      
-      try {
-        const details = await scrapeEventDetails(event.detailUrl);
-        eventsWithDetails.push({
-          ...event,
-          ...details
-        });
-        
-        // Delay to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } catch (error) {
-        console.error(`Failed to scrape details for ${event.eventName}:`, error.message);
-        eventsWithDetails.push(event); // Add event without details
-      }
-    }
+        // Scrape details for each event
+        const eventsWithDetails = [];
+        for (let i = 0; i < events.length; i++) {
+          const event = events[i];
+          console.log(`Scraping details for event ${i + 1}/${events.length}: ${event.eventName}`);
+          
+          try {
+            // Prüfe ob detailUrl existiert
+            if (!event.detailUrl) {
+              console.log(`⚠️ No detailUrl for ${event.eventName}, skipping details`);
+              eventsWithDetails.push(event);
+              continue;
+            }
+            
+            const details = await scrapeEventDetails(event.detailUrl);
+            eventsWithDetails.push({
+              ...event,
+              ...details
+            });
+            
+            // Delay to avoid rate limits
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          } catch (error) {
+            console.error(`Failed to scrape details for ${event.eventName}:`, error.message);
+            eventsWithDetails.push(event); // Add event without details
+          }
+        }
     
     return {
       events: eventsWithDetails,

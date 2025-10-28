@@ -139,10 +139,10 @@ async function main() {
           webflowId: result.id
         });
 
-        // Optional: Publish the item
-        if (process.env.AUTO_PUBLISH === 'true') {
-          await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
-        }
+        // Publish the item (automatisch aktiviert)
+        console.log(`Publishing: ${event.eventName}...`);
+        await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
+        console.log(`✅ Published: ${event.eventName}`);
 
         console.log(`✅ Uploaded: ${event.eventName}`);
         

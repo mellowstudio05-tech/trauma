@@ -26,6 +26,59 @@ async function main() {
     
     for (const event of scrapedData.events) {
       try {
+        // Datum für Webflow Date Field formatieren
+        const formatDateForWebflow = (event) => {
+          // Versuche das Datum aus der Detailseite zu parsen
+          if (event.fullDateTime) {
+            // Entferne Zeilenumbrüche und extrahiere Datum
+            const cleanDate = event.fullDateTime.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+            // Beispiel: "Dienstag, 28. Oktober 2025, 18:30 Uhr"
+            
+            // Konvertiere zu ISO Format für Webflow
+            try {
+              // Parse das deutsche Datum
+              const dateStr = cleanDate.match(/(\d{1,2})\.\s*(\w+)\s*(\d{4})/);
+              const timeStr = cleanDate.match(/(\d{1,2}):(\d{2})/);
+              
+              if (dateStr && timeStr) {
+                const day = dateStr[1];
+                const month = dateStr[2];
+                const year = dateStr[3];
+                const hour = timeStr[1];
+                const minute = timeStr[2];
+                
+                // Monatsnamen zu Zahlen
+                const monthMap = {
+                  'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
+                  'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
+                  'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+                };
+                
+                const monthNum = monthMap[month];
+                if (monthNum) {
+                  return `${year}-${monthNum}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00.000Z`;
+                }
+              }
+            } catch (e) {
+              console.log('Could not parse date:', cleanDate);
+            }
+          }
+          
+          // Fallback: Verwende das einfache Datum aus der Tabelle
+          if (event.date) {
+            // Format: DD.MM.YY -> YYYY-MM-DD
+            const parts = event.date.split('.');
+            if (parts.length === 3) {
+              const day = parts[0];
+              const month = parts[1];
+              const year = '20' + parts[2]; // 25 -> 2025
+              return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000Z`;
+            }
+          }
+          
+          return null;
+        };
+
         // Transform event data to Webflow format - Blog Header ist das name Field
         const webflowData = {
           name: event.title || event.eventName,                    // Blog Header = name Field
@@ -35,7 +88,7 @@ async function main() {
             .replace(/-+/g, '-')                                  // Entferne mehrfache -
             .replace(/^-|-$/g, ''),                               // Entferne führende/trailing -
           'uhrzeit': event.time,                                  // Zeit
-          'event-datum': event.fullDateTime || `${event.dayOfWeek}, ${event.date}, ${event.time} Uhr`, // Datum
+          'event-datum': formatDateForWebflow(event),             // Korrekt formatiertes Datum
           'preis': event.price || 'Eintritt frei',                // Preis
           'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
           'blog-rich-text': event.description || `${event.eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung

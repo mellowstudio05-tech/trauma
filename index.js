@@ -35,19 +35,6 @@ async function main() {
         if (existingItem) {
           console.log(`🔄 Event "${eventName}" already exists. Updating...`);
           
-          // Bild zu Webflow hochladen (falls vorhanden)
-          let blogImageId = null;
-          if (event.imageUrl) {
-            try {
-              const fullImageUrl = formatImageUrl(event.imageUrl);
-              const filename = `${eventName.replace(/[^a-z0-9]/gi, '-')}-${Date.now()}.jpg`;
-              console.log(`Uploading new image: ${filename}...`);
-              blogImageId = await webflow.uploadImage(fullImageUrl, filename);
-              console.log(`✅ New image uploaded: ${filename}`);
-            } catch (error) {
-              console.error(`❌ Failed to upload new image for ${eventName}:`, error.message);
-            }
-          }
 
           // Datum für Webflow Date Field formatieren
         const formatDateForWebflow = (event) => {
@@ -134,7 +121,6 @@ async function main() {
           'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
           'blog-rich-text': event.description || `${event.eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
           'imageurl': formatImageUrl(event.imageUrl),             // Vollständige Event-Bild URL
-          'blog-image': blogImageId,                              // Uploaded Image Asset ID
         };
 
           // Update existing item
@@ -155,19 +141,6 @@ async function main() {
         } else {
           console.log(`➕ Event "${eventName}" is new. Creating...`);
           
-          // Bild zu Webflow hochladen (falls vorhanden)
-          let blogImageId = null;
-          if (event.imageUrl) {
-            try {
-              const fullImageUrl = formatImageUrl(event.imageUrl);
-              const filename = `${eventName.replace(/[^a-z0-9]/gi, '-')}-${Date.now()}.jpg`;
-              console.log(`Uploading image: ${filename}...`);
-              blogImageId = await webflow.uploadImage(fullImageUrl, filename);
-              console.log(`✅ Image uploaded: ${filename}`);
-            } catch (error) {
-              console.error(`❌ Failed to upload image for ${eventName}:`, error.message);
-            }
-          }
 
           // Datum für Webflow Date Field formatieren
           const formatDateForWebflow = (event) => {

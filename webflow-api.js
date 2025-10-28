@@ -65,11 +65,62 @@ class WebflowAPI {
   }
 
   /**
-   * Upload an image to Webflow and return the asset ID
-   * @param {string} imageUrl - URL of the image to upload
-   * @param {string} filename - Filename for the uploaded image
-   * @returns {Promise<string>} Asset ID
+   * Update an existing item in Webflow CMS collection
+   * @param {string} collectionId - Webflow collection ID
+   * @param {string} itemId - Item ID to update
+   * @param {Object} data - Data to update
+   * @returns {Promise<Object>} Updated item
    */
+  async updateItem(collectionId, itemId, data) {
+    try {
+      const response = await axios.patch(
+        `${this.baseURL}/collections/${collectionId}/items/${itemId}`,
+        {
+          items: [{
+            id: itemId,
+            fieldData: data
+          }]
+        },
+        { headers: this.headers }
+      );
+      
+      console.log('Item updated in Webflow CMS:', response.data);
+      return response.data.items[0];
+    } catch (error) {
+      console.error('Error updating item in Webflow:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Find existing item by name
+   * @param {string} collectionId - Webflow collection ID
+   * @param {string} name - Name to search for
+   * @returns {Promise<Object|null>} Found item or null
+   */
+  async findItemByName(collectionId, name) {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/collections/${collectionId}/items`,
+        { 
+          headers: this.headers,
+          params: {
+            limit: 100 // Erhöhe das Limit um alle Items zu finden
+          }
+        }
+      );
+      
+      // Suche nach Item mit gleichem Namen
+      const foundItem = response.data.items.find(item => 
+        item.fieldData.name === name
+      );
+      
+      return foundItem || null;
+    } catch (error) {
+      console.error('Error finding item in Webflow:', error.response?.data || error.message);
+      return null;
+    }
+  }
   async uploadImage(imageUrl, filename) {
     try {
       // Lade das Bild herunter

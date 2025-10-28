@@ -16,10 +16,6 @@
       "dest": "server.js"
     }
   ],
-  "env": {
-    "WEBFLOW_API_TOKEN": "@webflow_api_token",
-    "WEBFLOW_COLLECTION_ID": "@webflow_collection_id"
-  },
   "crons": [
     {
       "path": "/api/scrape",

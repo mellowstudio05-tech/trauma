@@ -4,13 +4,19 @@ const axios = require('axios');
  * Webflow API Client
  */
 class WebflowAPI {
-  constructor(apiToken) {
+  constructor(apiToken, siteId = null) {
     this.apiToken = apiToken;
+    this.siteId = siteId;
     this.baseURL = 'https://api.webflow.com/v2';
     this.headers = {
       'Authorization': `Bearer ${apiToken}`,
       'Content-Type': 'application/json'
     };
+    
+    // Für Site API Token brauchen wir die Site ID
+    if (siteId) {
+      this.headers['X-Webflow-Site'] = siteId;
+    }
   }
 
   /**

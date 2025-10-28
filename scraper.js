@@ -188,8 +188,8 @@ async function scrapeEventDetails(detailUrl) {
  */
 async function scrapeContent() {
   try {
-    // Die URL von hessen-szene.de (einfache Version)
-    const url = 'https://www.hessen-szene.de/';
+    // Die URL von hessen-szene.de (mit den richtigen Filtern)
+    const url = 'https://www.hessen-szene.de/?tx_laks_calendar%5B__referrer%5D%5B%40extension%5D=Laks&tx_laks_calendar%5B__referrer%5D%5B%40controller%5D=EventDate&tx_laks_calendar%5B__referrer%5D%5B%40action%5D=list&tx_laks_calendar%5B__referrer%5D%5Barguments%5D=YToyOntzOjk6IkB3aWRnZXRfMCI7YToxOntzOjExOiJjdXJyZW50UGFnZSI7czoyOiI1MCI7fXM6OToiZXZlbnREYXRlIjtzOjU6IjczNTAwIjt9f2dfbc385cf5cc95e31f97150e4f00dfb907a501&tx_laks_calendar%5B__referrer%5D%5B%40request%5D=%7B%22%40extension%22%3A%22Laks%22%2C%22%40controller%22%3A%22EventDate%22%2C%22%40action%22%3A%22list%22%7D61a2206ff6f4bfc645019a2691b89e0f194538f7&tx_laks_calendar%5B__trustedProperties%5D=%7B%22eventFilter%22%3A%7B%22searchString%22%3A1%2C%22searchStringTitle%22%3A1%2C%22center%22%3A1%2C%22region%22%3A1%2C%22category%22%3A1%2C%22startDate%22%3A1%2C%22endDate%22%3A1%7D%2C%22showEventButton%22%3A1%7D3397c9ad06eb4637d9899c06cfaa1524f9df8b90&tx_laks_calendar%5BeventFilter%5D%5BsearchString%5D=&tx_laks_calendar%5BeventFilter%5D%5BsearchStringTitle%5D=&tx_laks_calendar%5BeventFilter%5D%5Bcenter%5D=8&tx_laks_calendar%5BeventFilter%5D%5Bregion%5D=&tx_laks_calendar%5BeventFilter%5D%5Bcategory%5D=&tx_laks_calendar%5BeventFilter%5D%5BstartDate%5D=&tx_laks_calendar%5BeventFilter%5D%5BendDate%5D=&tx_laks_calendar%5BshowEventButton%5D=';
     
     console.log('Starting scrape process...');
     console.log('URL:', url);

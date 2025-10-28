@@ -63,6 +63,20 @@ async function scrapeHandler(req, res) {
     
     for (const event of scrapedData.events) {
       try {
+        // Bild zu Webflow hochladen (falls vorhanden)
+        let blogImageId = null;
+        if (event.imageUrl) {
+          try {
+            const fullImageUrl = formatImageUrl(event.imageUrl);
+            const filename = `${event.eventName.replace(/[^a-z0-9]/gi, '-')}-${Date.now()}.jpg`;
+            console.log(`Uploading image: ${filename}...`);
+            blogImageId = await webflow.uploadImage(fullImageUrl, filename);
+            console.log(`✅ Image uploaded: ${filename}`);
+          } catch (error) {
+            console.error(`❌ Failed to upload image for ${event.eventName}:`, error.message);
+          }
+        }
+
         // Datum für Webflow Date Field formatieren
         const formatDateForWebflow = (event) => {
           // Versuche das Datum aus der Detailseite zu parsen
@@ -116,6 +130,24 @@ async function scrapeHandler(req, res) {
           return null;
         };
 
+        // Konvertiere relative Bild-URL zu vollständiger URL
+        const formatImageUrl = (imageUrl) => {
+          if (!imageUrl) return '';
+          
+          // Wenn es bereits eine vollständige URL ist
+          if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+            return imageUrl;
+          }
+          
+          // Wenn es ein relativer Pfad ist, füge die Domain hinzu
+          if (imageUrl.startsWith('/')) {
+            return `https://www.hessen-szene.de${imageUrl}`;
+          }
+          
+          // Falls es ein anderer Pfad ist
+          return `https://www.hessen-szene.de/${imageUrl}`;
+        };
+
         // Transform event data to Webflow format - Blog Header ist das name Field
         const webflowData = {
           name: event.title || event.eventName,                    // Blog Header = name Field
@@ -129,7 +161,8 @@ async function scrapeHandler(req, res) {
           'preis': event.price || 'Eintritt frei',                // Preis
           'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
           'blog-rich-text': event.description || `${event.eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
-          'imageurl': event.imageUrl || '',                       // Event-Bild URL
+          'imageurl': formatImageUrl(event.imageUrl),             // Vollständige Event-Bild URL
+          'blog-image': blogImageId,                              // Uploaded Image Asset ID
         };
 
         console.log(`Uploading: ${event.eventName}...`);

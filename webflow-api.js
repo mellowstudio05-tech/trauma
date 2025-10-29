@@ -73,12 +73,34 @@ class WebflowAPI {
    */
   async updateItem(collectionId, itemId, data) {
     try {
+      // Hole zuerst das bestehende Item um alle Felder zu haben
+      const existingItem = await axios.get(
+        `${this.baseURL}/collections/${collectionId}/items/${itemId}`,
+        { headers: this.headers }
+      );
+      
+      // Merge bestehende fieldData mit neuen Daten
+      const existingFieldData = existingItem.data.items[0].fieldData || {};
+      const mergedFieldData = {
+        ...existingFieldData,
+        ...data
+      };
+      
+      // Stelle sicher, dass slug existiert (pflichtfeld)
+      if (!mergedFieldData.slug && mergedFieldData.name) {
+        mergedFieldData.slug = mergedFieldData.name.toLowerCase()
+          .replace(/[^a-z0-9\s-]/g, '')
+          .replace(/\s+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, '');
+      }
+      
       const response = await axios.patch(
         `${this.baseURL}/collections/${collectionId}/items/${itemId}`,
         {
           items: [{
             id: itemId,
-            fieldData: data
+            fieldData: mergedFieldData
           }]
         },
         { headers: this.headers }

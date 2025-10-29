@@ -73,34 +73,12 @@ class WebflowAPI {
    */
   async updateItem(collectionId, itemId, data) {
     try {
-      // Hole zuerst das bestehende Item um alle Felder zu haben
-      const existingItem = await axios.get(
-        `${this.baseURL}/collections/${collectionId}/items/${itemId}`,
-        { headers: this.headers }
-      );
-      
-      // Merge bestehende fieldData mit neuen Daten
-      const existingFieldData = existingItem.data.items[0].fieldData || {};
-      const mergedFieldData = {
-        ...existingFieldData,
-        ...data
-      };
-      
-      // Stelle sicher, dass slug existiert (pflichtfeld)
-      if (!mergedFieldData.slug && mergedFieldData.name) {
-        mergedFieldData.slug = mergedFieldData.name.toLowerCase()
-          .replace(/[^a-z0-9\s-]/g, '')
-          .replace(/\s+/g, '-')
-          .replace(/-+/g, '-')
-          .replace(/^-|-$/g, '');
-      }
-      
       const response = await axios.patch(
         `${this.baseURL}/collections/${collectionId}/items/${itemId}`,
         {
           items: [{
             id: itemId,
-            fieldData: mergedFieldData
+            fieldData: data
           }]
         },
         { headers: this.headers }
@@ -178,31 +156,29 @@ class WebflowAPI {
   }
   async publishItem(collectionId, itemId) {
     try {
-      // Webflow API v2 - Item Publishing (neueste Methode)
+      // Webflow v2 API verwendet einen anderen Endpoint für Publishing
       const response = await axios.post(
-        `https://api.webflow.com/v2/collections/${collectionId}/items/${itemId}/publish`,
+        `${this.baseURL}/collections/${collectionId}/items/${itemId}/publish`,
         {},
         { headers: this.headers }
       );
       
-      console.log('✅ Item published successfully:', response.data);
       return response.data;
     } catch (error) {
-      console.error('❌ Error publishing item:', error.response?.data || error.message);
+      console.error('Error publishing item in Webflow:', error.response?.data || error.message);
       
-      // Fallback: Versuche v1 API
+      // Falls Publishing fehlschlägt, versuche es mit dem v1 API
       try {
-        console.log('🔄 Trying v1 API as fallback...');
+        console.log('Trying v1 API for publishing...');
         const v1Response = await axios.post(
           `https://api.webflow.com/v1/collections/${collectionId}/items/${itemId}/publish`,
           {},
           { headers: this.headers }
         );
         
-        console.log('✅ Item published with v1 API:', v1Response.data);
         return v1Response.data;
       } catch (v1Error) {
-        console.error('❌ v1 API also failed:', v1Error.response?.data || v1Error.message);
+        console.error('v1 API also failed:', v1Error.response?.data || v1Error.message);
         throw error; // Throw original error
       }
     }

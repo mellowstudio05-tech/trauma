@@ -148,16 +148,40 @@ app.get('/api/scrape', async (req, res) => {
           // Prüfe in Webflow: Site Settings → Collections → Deine Collection → Fields
           // Beispiel: Falls das Feld "Kategorie Plain Text" heißt, verwende: webflowData['kategorie-plain-text'] = event.category;
 
-          console.log(`Creating: ${eventName}...`);
-          const result = await webflow.createItem(
+          // Prüfe ob Event bereits existiert
+          const existingItem = await webflow.findItemByName(
             process.env.WEBFLOW_COLLECTION_ID,
-            webflowData
+            eventName
           );
+
+          let result;
+          let action;
+
+          if (existingItem) {
+            // Event existiert bereits - aktualisiere es
+            console.log(`Updating existing event: ${eventName}...`);
+            result = await webflow.updateItem(
+              process.env.WEBFLOW_COLLECTION_ID,
+              existingItem.id,
+              webflowData
+            );
+            action = 'updated';
+            console.log(`✅ Updated: ${eventName}`);
+          } else {
+            // Event existiert nicht - erstelle es neu
+            console.log(`Creating new event: ${eventName}...`);
+            result = await webflow.createItem(
+              process.env.WEBFLOW_COLLECTION_ID,
+              webflowData
+            );
+            action = 'created';
+            console.log(`✅ Created: ${eventName}`);
+          }
 
           uploadedEvents.push({
             eventName: eventName,
             webflowId: result.id,
-            action: 'created'
+            action: action
           });
 
           // Publish the item (mit besserem Error Handling)
@@ -167,10 +191,8 @@ app.get('/api/scrape', async (req, res) => {
             console.log(`✅ Published: ${eventName}`);
           } catch (publishError) {
             console.error(`❌ Failed to publish ${eventName}:`, publishError.message);
-            console.log(`⚠️ Event ${eventName} uploaded but not published. You may need to publish manually.`);
+            console.log(`⚠️ Event ${eventName} ${action} but not published. You may need to publish manually.`);
           }
-
-          console.log(`✅ Created: ${eventName}`);
         
         // Delay to avoid rate limits
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -186,6 +208,9 @@ app.get('/api/scrape', async (req, res) => {
       }
     }
 
+    const createdCount = uploadedEvents.filter(e => e.action === 'created').length;
+    const updatedCount = uploadedEvents.filter(e => e.action === 'updated').length;
+
     res.json({
       success: true,
       message: `Successfully processed ${uploadedEvents.length} events`,
@@ -193,7 +218,8 @@ app.get('/api/scrape', async (req, res) => {
       summary: {
         total: scrapedData.events.length,
         uploaded: uploadedEvents.length,
-        created: uploadedEvents.length
+        created: createdCount,
+        updated: updatedCount
       }
     });
 
@@ -298,16 +324,40 @@ app.post('/api/scrape', async (req, res) => {
           // Prüfe in Webflow: Site Settings → Collections → Deine Collection → Fields
           // Beispiel: Falls das Feld "Kategorie Plain Text" heißt, verwende: webflowData['kategorie-plain-text'] = event.category;
 
-          console.log(`Creating: ${eventName}...`);
-          const result = await webflow.createItem(
+          // Prüfe ob Event bereits existiert
+          const existingItem = await webflow.findItemByName(
             process.env.WEBFLOW_COLLECTION_ID,
-            webflowData
+            eventName
           );
+
+          let result;
+          let action;
+
+          if (existingItem) {
+            // Event existiert bereits - aktualisiere es
+            console.log(`Updating existing event: ${eventName}...`);
+            result = await webflow.updateItem(
+              process.env.WEBFLOW_COLLECTION_ID,
+              existingItem.id,
+              webflowData
+            );
+            action = 'updated';
+            console.log(`✅ Updated: ${eventName}`);
+          } else {
+            // Event existiert nicht - erstelle es neu
+            console.log(`Creating new event: ${eventName}...`);
+            result = await webflow.createItem(
+              process.env.WEBFLOW_COLLECTION_ID,
+              webflowData
+            );
+            action = 'created';
+            console.log(`✅ Created: ${eventName}`);
+          }
 
           uploadedEvents.push({
             eventName: eventName,
             webflowId: result.id,
-            action: 'created'
+            action: action
           });
 
           // Publish the item (mit besserem Error Handling)
@@ -317,10 +367,8 @@ app.post('/api/scrape', async (req, res) => {
             console.log(`✅ Published: ${eventName}`);
           } catch (publishError) {
             console.error(`❌ Failed to publish ${eventName}:`, publishError.message);
-            console.log(`⚠️ Event ${eventName} uploaded but not published. You may need to publish manually.`);
+            console.log(`⚠️ Event ${eventName} ${action} but not published. You may need to publish manually.`);
           }
-
-          console.log(`✅ Created: ${eventName}`);
         
         // Delay to avoid rate limits
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -336,6 +384,9 @@ app.post('/api/scrape', async (req, res) => {
       }
     }
 
+    const createdCount = uploadedEvents.filter(e => e.action === 'created').length;
+    const updatedCount = uploadedEvents.filter(e => e.action === 'updated').length;
+
     res.json({
       success: true,
       message: `Successfully processed ${uploadedEvents.length} events`,
@@ -343,7 +394,8 @@ app.post('/api/scrape', async (req, res) => {
       summary: {
         total: scrapedData.events.length,
         uploaded: uploadedEvents.length,
-        created: uploadedEvents.length
+        created: createdCount,
+        updated: updatedCount
       }
     });
 

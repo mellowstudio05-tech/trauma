@@ -115,9 +115,15 @@ async function main() {
           'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
           'blog-rich-text': event.description || `${event.eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
           'imageurl': formatImageUrl(event.imageUrl),             // Vollständige Event-Bild URL
-          // 'kategorie': event.category || '',                     // TODO: Korrekten Feldnamen in Webflow prüfen
-          // 'tag': event.dayOfWeek || '',                          // TODO: Korrekten Feldnamen in Webflow prüfen
         };
+        
+        // Füge Kategorie und Tag nur hinzu, wenn sie Werte haben
+        if (event.category) {
+          webflowData['kategorie'] = event.category;
+        }
+        if (event.dayOfWeek) {
+          webflowData['tag'] = event.dayOfWeek;
+        }
 
         console.log(`Creating: ${eventName}...`);
           const result = await webflow.createItem(

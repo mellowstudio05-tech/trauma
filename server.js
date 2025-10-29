@@ -141,6 +141,8 @@ app.get('/api/scrape', async (req, res) => {
               .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
               .replace(/-+/g, '-')                                // Entferne mehrfache -
               .replace(/^-|-$/g, ''),                             // Entferne führende/trailing -
+            'tag': event.dayOfWeek || '',                         // Wochentag (z.B. "Montag")
+            'kategorien': event.category || '',                   // Kategorie (z.B. "Kneipe: Café / Offener Treff")
             'uhrzeit': event.time,                                // Zeit
             'event-datum': formatDateForWebflow(event),           // Korrekt formatiertes Datum
             'preis': event.price || 'Eintritt frei',              // Preis
@@ -230,6 +232,8 @@ app.get('/api/scrape', async (req, res) => {
               .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
               .replace(/-+/g, '-')                                // Entferne mehrfache -
               .replace(/^-|-$/g, ''),                             // Entferne führende/trailing -
+            'tag': event.dayOfWeek || '',                         // Wochentag (z.B. "Montag")
+            'kategorien': event.category || '',                   // Kategorie (z.B. "Kneipe: Café / Offener Treff")
             'uhrzeit': event.time,                                // Zeit
             'event-datum': formatDateForWebflow(event),           // Korrekt formatiertes Datum
             'preis': event.price || 'Eintritt frei',              // Preis
@@ -378,6 +382,8 @@ app.post('/api/scrape', async (req, res) => {
               .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
               .replace(/-+/g, '-')                                // Entferne mehrfache -
               .replace(/^-|-$/g, ''),                             // Entferne führende/trailing -
+            'tag': event.dayOfWeek || '',                         // Wochentag (z.B. "Montag")
+            'kategorien': event.category || '',                   // Kategorie (z.B. "Kneipe: Café / Offener Treff")
             'uhrzeit': event.time,                                // Zeit
             'event-datum': formatDateForWebflow(event),           // Korrekt formatiertes Datum
             'preis': event.price || 'Eintritt frei',              // Preis
@@ -467,6 +473,8 @@ app.post('/api/scrape', async (req, res) => {
               .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
               .replace(/-+/g, '-')                                // Entferne mehrfache -
               .replace(/^-|-$/g, ''),                             // Entferne führende/trailing -
+            'tag': event.dayOfWeek || '',                         // Wochentag (z.B. "Montag")
+            'kategorien': event.category || '',                   // Kategorie (z.B. "Kneipe: Café / Offener Treff")
             'uhrzeit': event.time,                                // Zeit
             'event-datum': formatDateForWebflow(event),           // Korrekt formatiertes Datum
             'preis': event.price || 'Eintritt frei',              // Preis

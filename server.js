@@ -68,8 +68,8 @@ app.get('/api/scrape', async (req, res) => {
     const uploadedEvents = [];
     
     for (const event of scrapedData.events) {
+      let eventName = event.title || event.eventName || 'Unknown Event';
       try {
-        const eventName = event.title || event.eventName;
         
         // Prüfe ob Event bereits existiert
         console.log(`Checking if "${eventName}" already exists...`);
@@ -78,6 +78,11 @@ app.get('/api/scrape', async (req, res) => {
         if (existingItem) {
           console.log(`🔄 Event "${eventName}" already exists. Updating...`);
           
+          // Stelle sicher, dass name (Blog Header) immer vorhanden ist
+          if (!eventName || eventName.trim() === '') {
+            console.error('⚠️ Event name (Blog Header) is empty, skipping update');
+            continue;
+          }
 
           // Datum für Webflow Date Field formatieren
           const formatDateForWebflow = (event) => {
@@ -135,7 +140,7 @@ app.get('/api/scrape', async (req, res) => {
 
           // Transform event data to Webflow format - Blog Header ist das name Field
           const webflowData = {
-            name: eventName,                                        // Blog Header = name Field
+            name: eventName.trim(),                                  // Blog Header = name Field (Pflichtfeld)
             slug: eventName.toLowerCase()
               .replace(/[^a-z0-9\s-]/g, '')                       // Entferne Sonderzeichen
               .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
@@ -226,7 +231,7 @@ app.get('/api/scrape', async (req, res) => {
 
           // Transform event data to Webflow format - Blog Header ist das name Field
           const webflowData = {
-            name: eventName,                                        // Blog Header = name Field
+            name: eventName.trim(),                                  // Blog Header = name Field (Pflichtfeld)
             slug: eventName.toLowerCase()
               .replace(/[^a-z0-9\s-]/g, '')                       // Entferne Sonderzeichen
               .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
@@ -271,7 +276,9 @@ app.get('/api/scrape', async (req, res) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
-        console.error(`Error processing event ${eventName || 'unknown'}:`, error.message);
+        const errorEventName = eventName || event?.title || event?.eventName || 'unknown event';
+        console.error(`Error processing event ${errorEventName}:`, error.message);
+        console.error('Full error:', error);
         continue;
       }
     }
@@ -309,8 +316,8 @@ app.post('/api/scrape', async (req, res) => {
     const uploadedEvents = [];
     
     for (const event of scrapedData.events) {
+      let eventName = event.title || event.eventName || 'Unknown Event';
       try {
-        const eventName = event.title || event.eventName;
         
         // Prüfe ob Event bereits existiert
         console.log(`Checking if "${eventName}" already exists...`);
@@ -319,6 +326,11 @@ app.post('/api/scrape', async (req, res) => {
         if (existingItem) {
           console.log(`🔄 Event "${eventName}" already exists. Updating...`);
           
+          // Stelle sicher, dass name (Blog Header) immer vorhanden ist
+          if (!eventName || eventName.trim() === '') {
+            console.error('⚠️ Event name (Blog Header) is empty, skipping update');
+            continue;
+          }
 
           // Datum für Webflow Date Field formatieren
           const formatDateForWebflow = (event) => {
@@ -376,7 +388,7 @@ app.post('/api/scrape', async (req, res) => {
 
           // Transform event data to Webflow format - Blog Header ist das name Field
           const webflowData = {
-            name: eventName,                                        // Blog Header = name Field
+            name: eventName.trim(),                                  // Blog Header = name Field (Pflichtfeld)
             slug: eventName.toLowerCase()
               .replace(/[^a-z0-9\s-]/g, '')                       // Entferne Sonderzeichen
               .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
@@ -467,7 +479,7 @@ app.post('/api/scrape', async (req, res) => {
 
           // Transform event data to Webflow format - Blog Header ist das name Field
           const webflowData = {
-            name: eventName,                                        // Blog Header = name Field
+            name: eventName.trim(),                                  // Blog Header = name Field (Pflichtfeld)
             slug: eventName.toLowerCase()
               .replace(/[^a-z0-9\s-]/g, '')                       // Entferne Sonderzeichen
               .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
@@ -512,7 +524,9 @@ app.post('/api/scrape', async (req, res) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
-        console.error(`Error processing event ${eventName || 'unknown'}:`, error.message);
+        const errorEventName = eventName || event?.title || event?.eventName || 'unknown event';
+        console.error(`Error processing event ${errorEventName}:`, error.message);
+        console.error('Full error:', error);
         continue;
       }
     }

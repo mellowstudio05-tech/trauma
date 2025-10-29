@@ -68,8 +68,9 @@ app.get('/api/scrape', async (req, res) => {
     const uploadedEvents = [];
     
     for (const event of scrapedData.events) {
+      let eventName = 'Unknown Event';
       try {
-        const eventName = event.title || event.eventName;
+        eventName = event.title || event.eventName || 'Unknown Event';
         
         // Prüfe ob Event bereits existiert
         console.log(`Checking if "${eventName}" already exists...`);
@@ -305,8 +306,9 @@ app.post('/api/scrape', async (req, res) => {
     const uploadedEvents = [];
     
     for (const event of scrapedData.events) {
+      let eventName = 'Unknown Event';
       try {
-        const eventName = event.title || event.eventName;
+        eventName = event.title || event.eventName || 'Unknown Event';
         
         // Prüfe ob Event bereits existiert
         console.log(`Checking if "${eventName}" already exists...`);

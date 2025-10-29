@@ -141,11 +141,25 @@ app.get('/api/scrape', async (req, res) => {
             'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
             'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
             'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
-            // 'kategorie': event.category || '',                   // TODO: Korrekten Feldnamen in Webflow prüfen
-            // 'tag': event.dayOfWeek || '',                        // TODO: Korrekten Feldnamen in Webflow prüfen
           };
+          
+          // Füge Kategorie und Tag nur hinzu, wenn sie Werte haben
+          if (event.category) {
+            webflowData['kategorie'] = event.category;
+          }
+          if (event.dayOfWeek) {
+            webflowData['tag'] = event.dayOfWeek;
+          }
 
           console.log(`Creating: ${eventName}...`);
+          console.log('Webflow Data:', {
+            name: webflowData.name,
+            kategorie: webflowData.kategorie,
+            tag: webflowData.tag,
+            hasCategory: !!event.category,
+            hasDayOfWeek: !!event.dayOfWeek
+          });
+          
           const result = await webflow.createItem(
             process.env.WEBFLOW_COLLECTION_ID,
             webflowData
@@ -288,11 +302,25 @@ app.post('/api/scrape', async (req, res) => {
             'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
             'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
             'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
-            // 'kategorie': event.category || '',                   // TODO: Korrekten Feldnamen in Webflow prüfen
-            // 'tag': event.dayOfWeek || '',                        // TODO: Korrekten Feldnamen in Webflow prüfen
           };
+          
+          // Füge Kategorie und Tag nur hinzu, wenn sie Werte haben
+          if (event.category) {
+            webflowData['kategorie'] = event.category;
+          }
+          if (event.dayOfWeek) {
+            webflowData['tag'] = event.dayOfWeek;
+          }
 
           console.log(`Creating: ${eventName}...`);
+          console.log('Webflow Data:', {
+            name: webflowData.name,
+            kategorie: webflowData.kategorie,
+            tag: webflowData.tag,
+            hasCategory: !!event.category,
+            hasDayOfWeek: !!event.dayOfWeek
+          });
+          
           const result = await webflow.createItem(
             process.env.WEBFLOW_COLLECTION_ID,
             webflowData

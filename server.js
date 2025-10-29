@@ -173,7 +173,8 @@ app.get('/api/scrape', async (req, res) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
-        console.error(`Error processing event ${eventName || 'unknown'}:`, error.message);
+        const errorEventName = event?.title || event?.eventName || 'unknown';
+        console.error(`Error processing event ${errorEventName}:`, error.message);
         continue;
       }
     }
@@ -315,7 +316,8 @@ app.post('/api/scrape', async (req, res) => {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
-        console.error(`Error processing event ${eventName || 'unknown'}:`, error.message);
+        const errorEventName = event?.title || event?.eventName || 'unknown';
+        console.error(`Error processing event ${errorEventName}:`, error.message);
         continue;
       }
     }

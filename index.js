@@ -122,27 +122,51 @@ async function main() {
         // Prüfe in Webflow: Site Settings → Collections → Deine Collection → Fields
         // Beispiel: Falls das Feld "Kategorie Plain Text" heißt, verwende: webflowData['kategorie-plain-text'] = event.category;
 
-        console.log(`Creating: ${eventName}...`);
-          const result = await webflow.createItem(
+        // Prüfe ob Event bereits existiert
+        const existingItem = await webflow.findItemByName(
+          process.env.WEBFLOW_COLLECTION_ID,
+          eventName
+        );
+
+        let result;
+        let action;
+
+        if (existingItem) {
+          // Event existiert bereits - aktualisiere es
+          console.log(`Updating existing event: ${eventName}...`);
+          result = await webflow.updateItem(
+            process.env.WEBFLOW_COLLECTION_ID,
+            existingItem.id,
+            webflowData
+          );
+          action = 'updated';
+          console.log(`✅ Updated: ${eventName}`);
+        } else {
+          // Event existiert nicht - erstelle es neu
+          console.log(`Creating new event: ${eventName}...`);
+          result = await webflow.createItem(
             process.env.WEBFLOW_COLLECTION_ID,
             webflowData
           );
+          action = 'created';
+          console.log(`✅ Created: ${eventName}`);
+        }
 
-          uploadedEvents.push({
-            eventName: eventName,
-            webflowId: result.id,
-            action: 'created'
-          });
+        uploadedEvents.push({
+          eventName: eventName,
+          webflowId: result.id,
+          action: action
+        });
 
-          // Publish the item (mit besserem Error Handling)
-          try {
-            console.log(`Publishing: ${eventName}...`);
-            await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
-            console.log(`✅ Published: ${eventName}`);
-          } catch (publishError) {
-            console.error(`❌ Failed to publish ${eventName}:`, publishError.message);
-            console.log(`⚠️ Event ${eventName} uploaded but not published. You may need to publish manually.`);
-          }
+        // Publish the item (mit besserem Error Handling)
+        try {
+          console.log(`Publishing: ${eventName}...`);
+          await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
+          console.log(`✅ Published: ${eventName}`);
+        } catch (publishError) {
+          console.error(`❌ Failed to publish ${eventName}:`, publishError.message);
+          console.log(`⚠️ Event ${eventName} ${action} but not published. You may need to publish manually.`);
+        }
 
         
         // Delay zwischen Uploads um Rate Limits zu vermeiden
@@ -153,7 +177,13 @@ async function main() {
       }
     }
 
-    console.log(`\n✅ Successfully uploaded ${uploadedEvents.length} events to Webflow!`);
+    // Summary
+    const createdCount = uploadedEvents.filter(e => e.action === 'created').length;
+    const updatedCount = uploadedEvents.filter(e => e.action === 'updated').length;
+    
+    console.log(`\n✅ Successfully processed ${uploadedEvents.length} events:`);
+    console.log(`   📝 Created: ${createdCount} new events`);
+    console.log(`   ✏️  Updated: ${updatedCount} existing events`);
 
   } catch (error) {
     console.error('❌ Error:', error.message);

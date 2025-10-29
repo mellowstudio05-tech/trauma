@@ -115,8 +115,8 @@ async function main() {
           'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
           'blog-rich-text': event.description || `${event.eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
           'imageurl': formatImageUrl(event.imageUrl),             // Vollständige Event-Bild URL
-          'kategorie': event.category || '',                     // Kategorie aus Detailseite
-          'tag': event.dayOfWeek || '',                          // Wochentag (Montag, Dienstag, etc.)
+          // 'kategorie': event.category || '',                     // TODO: Korrekten Feldnamen in Webflow prüfen
+          // 'tag': event.dayOfWeek || '',                          // TODO: Korrekten Feldnamen in Webflow prüfen
         };
 
         console.log(`Creating: ${eventName}...`);
@@ -146,7 +146,7 @@ async function main() {
         await new Promise(resolve => setTimeout(resolve, 1000));
         
       } catch (error) {
-        console.error(`Error uploading event ${event.eventName}:`, error.message);
+        console.error(`Error uploading event ${event?.eventName || event?.title || 'unknown'}:`, error.message);
       }
     }
 

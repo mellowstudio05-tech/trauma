@@ -209,14 +209,15 @@ async function scrapeContent() {
           console.log(`Scraping details for event ${i + 1}/${events.length}: ${event.eventName}`);
           
           try {
-            // Prüfe ob detailUrl existiert
-            if (!event.detailUrl) {
+            // Prüfe ob detailUrl (eventLink) existiert
+            const detailUrl = event.detailUrl || event.eventLink;
+            if (!detailUrl) {
               console.log(`⚠️ No detailUrl for ${event.eventName}, skipping details`);
               eventsWithDetails.push(event);
               continue;
             }
             
-            const details = await scrapeEventDetails(event.detailUrl);
+            const details = await scrapeEventDetails(detailUrl);
             eventsWithDetails.push({
               ...event,
               ...details

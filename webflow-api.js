@@ -128,21 +128,57 @@ class WebflowAPI {
    */
   async updateItem(collectionId, itemId, data) {
     try {
+      // Hole erst das bestehende Item, um alle Felder zu erhalten
+      const existingItem = await this.getItem(collectionId, itemId);
+      
+      // Merge bestehende Felddaten mit neuen Daten
+      const mergedData = {
+        ...(existingItem?.fieldData || {}),
+        ...data  // Neue Daten überschreiben bestehende
+      };
+
+      // Webflow v2 API Update Format - möglicherweise ohne items Array
       const response = await axios.patch(
         `${this.baseURL}/collections/${collectionId}/items/${itemId}`,
         {
-          items: [{
-            id: itemId,
-            fieldData: data
-          }]
+          fieldData: mergedData
         },
         { headers: this.headers }
       );
       
       console.log('Item updated in Webflow CMS:', response.data);
-      return response.data.items[0];
+      return response.data.items?.[0] || response.data;
     } catch (error) {
       console.error('Error updating item in Webflow:', error.response?.data || error.message);
+      
+      // Fallback: Versuche es mit dem items Array Format
+      if (error.response?.status === 400) {
+        try {
+          console.log('Trying alternative update format with items array...');
+          const existingItem = await this.getItem(collectionId, itemId);
+          const mergedData = {
+            ...(existingItem?.fieldData || {}),
+            ...data
+          };
+          
+          const fallbackResponse = await axios.patch(
+            `${this.baseURL}/collections/${collectionId}/items/${itemId}`,
+            {
+              items: [{
+                id: itemId,
+                fieldData: mergedData
+              }]
+            },
+            { headers: this.headers }
+          );
+          
+          return fallbackResponse.data.items?.[0] || fallbackResponse.data;
+        } catch (fallbackError) {
+          console.error('Fallback update also failed:', fallbackError.response?.data || fallbackError.message);
+          throw error; // Throw original error
+        }
+      }
+      
       throw error;
     }
   }

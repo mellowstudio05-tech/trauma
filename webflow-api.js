@@ -46,6 +46,25 @@ class WebflowAPI {
   }
 
   /**
+   * Get collection schema (field definitions)
+   * @param {string} collectionId - Webflow collection ID
+   * @returns {Promise<Object>} Collection schema with fields
+   */
+  async getCollectionSchema(collectionId) {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/collections/${collectionId}`,
+        { headers: this.headers }
+      );
+      
+      return response.data;
+    } catch (error) {
+      console.error('Error getting collection schema:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Get items from a collection
    * @param {string} collectionId - Webflow collection ID
    * @returns {Promise<Array>} Collection items

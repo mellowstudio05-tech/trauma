@@ -115,7 +115,9 @@ async function main() {
           'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
           'blog-rich-text': event.description || `${event.eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
           'imageurl': formatImageUrl(event.imageUrl),             // Vollständige Event-Bild URL
-          };
+          'kategorie': event.category || '',                     // Kategorie aus Detailseite
+          'tag': event.dayOfWeek || '',                          // Wochentag (Montag, Dienstag, etc.)
+        };
 
         console.log(`Creating: ${eventName}...`);
           const result = await webflow.createItem(

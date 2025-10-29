@@ -117,13 +117,10 @@ async function main() {
           'imageurl': formatImageUrl(event.imageUrl),             // Vollständige Event-Bild URL
         };
         
-        // Füge Kategorie und Tag nur hinzu, wenn sie Werte haben
-        if (event.category) {
-          webflowData['kategorie'] = event.category;
-        }
-        if (event.dayOfWeek) {
-          webflowData['tag'] = event.dayOfWeek;
-        }
+        // TODO: Füge Kategorie und Tag hinzu, sobald die exakten Feldnamen aus Webflow bekannt sind
+        // Die Felder müssen in Webflow CMS existieren und die Feldnamen müssen exakt übereinstimmen
+        // Prüfe in Webflow: Site Settings → Collections → Deine Collection → Fields
+        // Beispiel: Falls das Feld "Kategorie Plain Text" heißt, verwende: webflowData['kategorie-plain-text'] = event.category;
 
         console.log(`Creating: ${eventName}...`);
           const result = await webflow.createItem(

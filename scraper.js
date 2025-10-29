@@ -1,246 +1,536 @@
-const axios = require('axios');
-const cheerio = require('cheerio');
+require('dotenv').config();
+const express = require('express');
+const { scrapeContent } = require('./scraper');
+const WebflowAPI = require('./webflow-api');
 
-/**
- * Scrapes events from hessen-szene.de
- * @param {string} url - URL to scrape
- * @returns {Promise<Array>} Array of event objects
- */
-async function scrapeEvents(url) {
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middleware
+app.use(express.json());
+
+// Initialize Webflow API
+const webflow = new WebflowAPI(process.env.WEBFLOW_API_TOKEN, process.env.WEBFLOW_SITE_ID);
+
+// Routes
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Trauma Scraper API', 
+    version: '1.0.0',
+    endpoints: {
+      scrape: '/api/scrape',
+      health: '/api/health'
+    }
+  });
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+app.get('/api/scrape', async (req, res) => {
   try {
-    console.log(`Scraping events from: ${url}`);
-    
-    // Validate URL
-    if (!url || typeof url !== 'string') {
-      throw new Error('Invalid URL provided');
-    }
-    
-    // Check if URL is valid
-    try {
-      new URL(url);
-    } catch (e) {
-      throw new Error(`Invalid URL format: ${url}`);
-    }
-    
-    const response = await axios.get(url, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      },
-      timeout: 30000 // 30 second timeout
+    console.log('Starting scrape process...');
+    console.log('Environment check:', {
+      hasApiToken: !!process.env.WEBFLOW_API_TOKEN,
+      hasSiteId: !!process.env.WEBFLOW_SITE_ID,
+      hasCollectionId: !!process.env.WEBFLOW_COLLECTION_ID,
+      apiTokenStart: process.env.WEBFLOW_API_TOKEN?.substring(0, 5) + '...'
     });
     
-    const $ = cheerio.load(response.data);
-    
-    const events = [];
-    
-    // Finde die Event-Tabelle
-    const eventTable = $('table.table tbody tr');
-    
-    eventTable.each((i, row) => {
-      try {
-        const $row = $(row);
-        
-        // Datum extrahieren
-        const dateText = $row.find('td').eq(0).text().trim();
-        const dateMatch = dateText.match(/(\d{2}\.\d{2}\.\d{2})/);
-        const date = dateMatch ? dateMatch[1] : '';
-        const dayOfWeek = $row.find('td').eq(0).find('br').next().text().trim();
-        
-        // Beginn extrahieren
-        const time = $row.find('td').eq(1).text().trim();
-        
-        // Veranstaltung extrahieren
-        const $eventLink = $row.find('td').eq(2).find('a');
-        const eventName = $eventLink.text().trim();
-        const eventLink = $eventLink.attr('href');
-        const eventId = eventLink ? eventLink.match(/eventDate%5D=(\d+)/)?.[1] : '';
-        
-        // Detailseite URL erstellen
-        const detailUrl = eventLink ? new URL(eventLink, 'https://www.hessen-szene.de').href : '';
-        
-        // Ort extrahieren
-        const location = $row.find('td').eq(3).text().trim().replace(/\s+/g, ' ');
-        
-        // Kategorie extrahieren
-        const category = $row.find('td').eq(4).text().trim();
-        
-        if (eventName && date) {
-          events.push({
-            date: date,
-            dayOfWeek: dayOfWeek,
-            time: time,
-            eventName: eventName,
-            eventLink: detailUrl,
-            eventId: eventId,
-            location: location,
-            category: category,
-            venue: 'trauma im g-werk',
-            scrapedAt: new Date().toISOString()
-          });
-        }
-      } catch (err) {
-        console.error(`Error parsing row ${i}:`, err.message);
+    // Konvertiere relative Bild-URL zu vollständiger URL (globale Funktion)
+    const formatImageUrl = (imageUrl) => {
+      if (!imageUrl) return '';
+      
+      // Wenn es bereits eine vollständige URL ist
+      if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+        return imageUrl;
       }
-    });
-    
-    console.log(`Found ${events.length} events`);
-    
-    // Detailseiten für zusätzliche Informationen laden
-    console.log('Loading event details...');
-    for (let i = 0; i < events.length; i++) {
-      if (events[i].eventLink) {
-        try {
-          const details = await scrapeEventDetails(events[i].eventLink);
-          events[i] = { ...events[i], ...details };
-          console.log(`Loaded details for: ${events[i].eventName}`);
-          
-          // Delay zwischen Requests um Rate Limits zu vermeiden
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        } catch (error) {
-          console.error(`Failed to load details for ${events[i].eventName}:`, error.message);
-        }
+      
+      // Wenn es ein relativer Pfad ist, füge die Domain hinzu
+      if (imageUrl.startsWith('/')) {
+        return `https://www.hessen-szene.de${imageUrl}`;
       }
-    }
-    
-    return events;
-    
-  } catch (error) {
-    console.error(`Error scraping ${url}:`, error.message);
-    throw error;
-  }
-}
-
-/**
- * Legacy function for general scraping (kept for backwards compatibility)
- * @param {string} url - URL to scrape
- * @returns {Promise<Object>} Scraped data
- */
-async function scrapeContent(url) {
-  const events = await scrapeEvents(url);
-  return {
-    url: url,
-    title: 'Events from hessen-szene.de',
-    events: events,
-    eventCount: events.length,
-    scrapedAt: new Date().toISOString()
-  };
-}
-
-/**
- * Scrapes additional details from event detail page
- * @param {string} detailUrl - URL of the event detail page
- * @returns {Promise<Object>} Additional event details
- */
-async function scrapeEventDetails(detailUrl) {
-  try {
-    console.log(`Scraping details from: ${detailUrl}`);
-    
-    const response = await axios.get(detailUrl, {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-      }
-    });
-    
-    const $ = cheerio.load(response.data);
-    
-    // Extrahiere Details aus der Detailseite
-    const details = {
-      // Event-Titel (für Blog Header)
-      title: $('h1.pb-2').text().trim(),
       
-      // Vollständiges Datum und Zeit (für Event Datum)
-      fullDateTime: $('.event-single-view-datetime strong').text().trim(),
-      
-      // Veranstaltungsbeginn
-      startTime: $('.event-single-view-time p').text().trim(),
-      
-      // Kategorie
-      category: $('.event-single-view-category').text().replace('Kategorie:', '').trim(),
-      
-      // Ort mit vollständiger Adresse
-      fullLocation: $('.event-single-view-contact .col:last-child p').html(),
-      
-      // Event-Bild
-      imageUrl: $('.single-event-image img').attr('src'),
-      imageAlt: $('.single-event-image img').attr('alt'),
-      
-      // Beschreibung (für Blog Rich Text)
-      description: $('.event-single-view-desc').text().trim(),
-      
-      // Eintrittspreis
-      price: $('.event-single-view-fee p').text().trim(),
-      
-      // Hotline (falls vorhanden)
-      hotline: $('.event-single-view-contact p').text().match(/Hotline: (\d+)/)?.[1] || '',
+      // Falls es ein anderer Pfad ist
+      return `https://www.hessen-szene.de/${imageUrl}`;
     };
     
-    return details;
-    
-  } catch (error) {
-    console.error(`Error scraping details from ${detailUrl}:`, error.message);
-    return {};
-  }
-}
+    // Scrape content from the URL
+    const scrapedData = await scrapeContent();
+    console.log(`Found ${scrapedData.events.length} events`);
 
-/**
- * Main function to scrape content from hessen-szene.de
- * @returns {Promise<Object>} Scraped data with events
- */
-async function scrapeContent() {
-  try {
-    // Die URL von hessen-szene.de (mit den richtigen Filtern)
-    const url = 'https://www.hessen-szene.de/?tx_laks_calendar%5B__referrer%5D%5B%40extension%5D=Laks&tx_laks_calendar%5B__referrer%5D%5B%40controller%5D=EventDate&tx_laks_calendar%5B__referrer%5D%5B%40action%5D=list&tx_laks_calendar%5B__referrer%5D%5Barguments%5D=YToyOntzOjk6IkB3aWRnZXRfMCI7YToxOntzOjExOiJjdXJyZW50UGFnZSI7czoyOiI1MCI7fXM6OToiZXZlbnREYXRlIjtzOjU6IjczNTAwIjt9f2dfbc385cf5cc95e31f97150e4f00dfb907a501&tx_laks_calendar%5B__referrer%5D%5B%40request%5D=%7B%22%40extension%22%3A%22Laks%22%2C%22%40controller%22%3A%22EventDate%22%2C%22%40action%22%3A%22list%22%7D61a2206ff6f4bfc645019a2691b89e0f194538f7&tx_laks_calendar%5B__trustedProperties%5D=%7B%22eventFilter%22%3A%7B%22searchString%22%3A1%2C%22searchStringTitle%22%3A1%2C%22center%22%3A1%2C%22region%22%3A1%2C%22category%22%3A1%2C%22startDate%22%3A1%2C%22endDate%22%3A1%7D%2C%22showEventButton%22%3A1%7D3397c9ad06eb4637d9899c06cfaa1524f9df8b90&tx_laks_calendar%5BeventFilter%5D%5BsearchString%5D=&tx_laks_calendar%5BeventFilter%5D%5BsearchStringTitle%5D=&tx_laks_calendar%5BeventFilter%5D%5Bcenter%5D=8&tx_laks_calendar%5BeventFilter%5D%5Bregion%5D=&tx_laks_calendar%5BeventFilter%5D%5Bcategory%5D=&tx_laks_calendar%5BeventFilter%5D%5BstartDate%5D=&tx_laks_calendar%5BeventFilter%5D%5BendDate%5D=&tx_laks_calendar%5BshowEventButton%5D=';
+    // Upload each event to Webflow
+    const uploadedEvents = [];
     
-    console.log('Starting scrape process...');
-    console.log('URL:', url);
-    
-    // Validate URL before using it
-    if (!url || url === 'undefined') {
-      throw new Error('URL is undefined or invalid');
-    }
-    
-    const events = await scrapeEvents(url);
-    console.log(`Scraped ${events.length} events from main page`);
-    
-        // Scrape details for each event
-        const eventsWithDetails = [];
-        for (let i = 0; i < events.length; i++) {
-          const event = events[i];
-          console.log(`Scraping details for event ${i + 1}/${events.length}: ${event.eventName}`);
+    for (const event of scrapedData.events) {
+      try {
+        const eventName = event.title || event.eventName;
+        
+        // Prüfe ob Event bereits existiert
+        console.log(`Checking if "${eventName}" already exists...`);
+        const existingItem = await webflow.findItemByName(process.env.WEBFLOW_COLLECTION_ID, eventName);
+        
+        if (existingItem) {
+          console.log(`🔄 Event "${eventName}" already exists. Updating...`);
           
-          try {
-            // Prüfe ob detailUrl existiert
-            if (!event.detailUrl) {
-              console.log(`⚠️ No detailUrl for ${event.eventName}, skipping details`);
-              eventsWithDetails.push(event);
-              continue;
+
+          // Datum für Webflow Date Field formatieren
+          const formatDateForWebflow = (event) => {
+            // Versuche das Datum aus der Detailseite zu parsen
+            if (event.fullDateTime) {
+              // Entferne Zeilenumbrüche und extrahiere Datum
+              const cleanDate = event.fullDateTime.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+              // Beispiel: "Dienstag, 28. Oktober 2025, 18:30 Uhr"
+              
+              // Konvertiere zu ISO Format für Webflow
+              try {
+                // Parse das deutsche Datum
+                const dateStr = cleanDate.match(/(\d{1,2})\.\s*(\w+)\s*(\d{4})/);
+                const timeStr = cleanDate.match(/(\d{1,2}):(\d{2})/);
+                
+                if (dateStr && timeStr) {
+                  const day = dateStr[1];
+                  const month = dateStr[2];
+                  const year = dateStr[3];
+                  const hour = timeStr[1];
+                  const minute = timeStr[2];
+                  
+                  // Monatsnamen zu Zahlen
+                  const monthMap = {
+                    'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
+                    'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
+                    'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+                  };
+                  
+                  const monthNum = monthMap[month];
+                  if (monthNum) {
+                    return `${year}-${monthNum}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00.000Z`;
+                  }
+                }
+              } catch (e) {
+                console.log('Could not parse date:', cleanDate);
+              }
             }
             
-            const details = await scrapeEventDetails(event.detailUrl);
-            eventsWithDetails.push({
-              ...event,
-              ...details
-            });
+            // Fallback: Verwende das einfache Datum aus der Tabelle
+            if (event.date) {
+              // Format: DD.MM.YY -> YYYY-MM-DD
+              const parts = event.date.split('.');
+              if (parts.length === 3) {
+                const day = parts[0];
+                const month = parts[1];
+                const year = '20' + parts[2]; // 25 -> 2025
+                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000Z`;
+              }
+            }
             
-            // Delay to avoid rate limits
-            await new Promise(resolve => setTimeout(resolve, 1000));
-          } catch (error) {
-            console.error(`Failed to scrape details for ${event.eventName}:`, error.message);
-            eventsWithDetails.push(event); // Add event without details
+            return null;
+          };
+
+
+          // Transform event data to Webflow format - Blog Header ist das name Field
+          const webflowData = {
+            name: eventName,                                        // Blog Header = name Field
+            slug: eventName.toLowerCase()
+              .replace(/[^a-z0-9\s-]/g, '')                       // Entferne Sonderzeichen
+              .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
+              .replace(/-+/g, '-')                                // Entferne mehrfache -
+              .replace(/^-|-$/g, ''),                             // Entferne führende/trailing -
+            'uhrzeit': event.time,                                // Zeit
+            'event-datum': formatDateForWebflow(event),           // Korrekt formatiertes Datum
+            'preis': event.price || 'Eintritt frei',              // Preis
+            'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
+            'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
+            'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
+          };
+
+          // Update existing item
+          const result = await webflow.updateItem(
+            process.env.WEBFLOW_COLLECTION_ID,
+            existingItem.id,
+            webflowData
+          );
+
+          uploadedEvents.push({
+            eventName: eventName,
+            webflowId: result.id,
+            action: 'updated'
+          });
+
+          console.log(`✅ Updated: ${eventName}`);
+          
+        } else {
+          console.log(`➕ Event "${eventName}" is new. Creating...`);
+          
+
+          // Datum für Webflow Date Field formatieren
+          const formatDateForWebflow = (event) => {
+            // Versuche das Datum aus der Detailseite zu parsen
+            if (event.fullDateTime) {
+              // Entferne Zeilenumbrüche und extrahiere Datum
+              const cleanDate = event.fullDateTime.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+              // Beispiel: "Dienstag, 28. Oktober 2025, 18:30 Uhr"
+              
+              // Konvertiere zu ISO Format für Webflow
+              try {
+                // Parse das deutsche Datum
+                const dateStr = cleanDate.match(/(\d{1,2})\.\s*(\w+)\s*(\d{4})/);
+                const timeStr = cleanDate.match(/(\d{1,2}):(\d{2})/);
+                
+                if (dateStr && timeStr) {
+                  const day = dateStr[1];
+                  const month = dateStr[2];
+                  const year = dateStr[3];
+                  const hour = timeStr[1];
+                  const minute = timeStr[2];
+                  
+                  // Monatsnamen zu Zahlen
+                  const monthMap = {
+                    'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
+                    'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
+                    'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+                  };
+                  
+                  const monthNum = monthMap[month];
+                  if (monthNum) {
+                    return `${year}-${monthNum}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00.000Z`;
+                  }
+                }
+              } catch (e) {
+                console.log('Could not parse date:', cleanDate);
+              }
+            }
+            
+            // Fallback: Verwende das einfache Datum aus der Tabelle
+            if (event.date) {
+              // Format: DD.MM.YY -> YYYY-MM-DD
+              const parts = event.date.split('.');
+              if (parts.length === 3) {
+                const day = parts[0];
+                const month = parts[1];
+                const year = '20' + parts[2]; // 25 -> 2025
+                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000Z`;
+              }
+            }
+            
+            return null;
+          };
+
+
+          // Transform event data to Webflow format - Blog Header ist das name Field
+          const webflowData = {
+            name: eventName,                                        // Blog Header = name Field
+            slug: eventName.toLowerCase()
+              .replace(/[^a-z0-9\s-]/g, '')                       // Entferne Sonderzeichen
+              .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
+              .replace(/-+/g, '-')                                // Entferne mehrfache -
+              .replace(/^-|-$/g, ''),                             // Entferne führende/trailing -
+            'uhrzeit': event.time,                                // Zeit
+            'event-datum': formatDateForWebflow(event),           // Korrekt formatiertes Datum
+            'preis': event.price || 'Eintritt frei',              // Preis
+            'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
+            'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
+            'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
+          };
+
+          console.log(`Creating: ${eventName}...`);
+          const result = await webflow.createItem(
+            process.env.WEBFLOW_COLLECTION_ID,
+            webflowData
+          );
+
+          uploadedEvents.push({
+            eventName: eventName,
+            webflowId: result.id,
+            action: 'created'
+          });
+
+          // Publish the item automatically
+          try {
+            console.log(`🚀 Publishing: ${eventName}...`);
+            await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
+            console.log(`✅ Published: ${eventName}`);
+          } catch (publishError) {
+            console.error(`❌ Failed to publish ${eventName}:`, publishError.message);
+            console.log(`⚠️ Event ${eventName} uploaded but not published. You may need to publish manually.`);
           }
+
+          console.log(`✅ Created: ${eventName}`);
         }
-    
-    return {
-      events: eventsWithDetails,
-      scrapedAt: new Date().toISOString(),
-      totalEvents: eventsWithDetails.length
-    };
-    
+        
+        // Delay to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        console.error(`Error processing event ${eventName || 'unknown'}:`, error.message);
+        continue;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully processed ${uploadedEvents.length} events`,
+      events: uploadedEvents,
+      summary: {
+        total: scrapedData.events.length,
+        uploaded: uploadedEvents.length,
+        created: uploadedEvents.filter(e => e.action === 'created').length,
+        updated: uploadedEvents.filter(e => e.action === 'updated').length
+      }
+    });
+
   } catch (error) {
-    console.error('Error in scrapeContent:', error.message);
-    throw error;
+    console.error('Scrape process failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
   }
-}
+});
 
-module.exports = { scrapeContent, scrapeEvents, scrapeEventDetails };
+app.post('/api/scrape', async (req, res) => {
+  try {
+    console.log('Manual scrape triggered...');
+    
+    // Scrape content from the URL
+    const scrapedData = await scrapeContent();
+    console.log(`Found ${scrapedData.events.length} events`);
 
+    // Upload each event to Webflow
+    const uploadedEvents = [];
+    
+    for (const event of scrapedData.events) {
+      try {
+        const eventName = event.title || event.eventName;
+        
+        // Prüfe ob Event bereits existiert
+        console.log(`Checking if "${eventName}" already exists...`);
+        const existingItem = await webflow.findItemByName(process.env.WEBFLOW_COLLECTION_ID, eventName);
+        
+        if (existingItem) {
+          console.log(`🔄 Event "${eventName}" already exists. Updating...`);
+          
+
+          // Datum für Webflow Date Field formatieren
+          const formatDateForWebflow = (event) => {
+            // Versuche das Datum aus der Detailseite zu parsen
+            if (event.fullDateTime) {
+              // Entferne Zeilenumbrüche und extrahiere Datum
+              const cleanDate = event.fullDateTime.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+              // Beispiel: "Dienstag, 28. Oktober 2025, 18:30 Uhr"
+              
+              // Konvertiere zu ISO Format für Webflow
+              try {
+                // Parse das deutsche Datum
+                const dateStr = cleanDate.match(/(\d{1,2})\.\s*(\w+)\s*(\d{4})/);
+                const timeStr = cleanDate.match(/(\d{1,2}):(\d{2})/);
+                
+                if (dateStr && timeStr) {
+                  const day = dateStr[1];
+                  const month = dateStr[2];
+                  const year = dateStr[3];
+                  const hour = timeStr[1];
+                  const minute = timeStr[2];
+                  
+                  // Monatsnamen zu Zahlen
+                  const monthMap = {
+                    'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
+                    'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
+                    'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+                  };
+                  
+                  const monthNum = monthMap[month];
+                  if (monthNum) {
+                    return `${year}-${monthNum}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00.000Z`;
+                  }
+                }
+              } catch (e) {
+                console.log('Could not parse date:', cleanDate);
+              }
+            }
+            
+            // Fallback: Verwende das einfache Datum aus der Tabelle
+            if (event.date) {
+              // Format: DD.MM.YY -> YYYY-MM-DD
+              const parts = event.date.split('.');
+              if (parts.length === 3) {
+                const day = parts[0];
+                const month = parts[1];
+                const year = '20' + parts[2]; // 25 -> 2025
+                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000Z`;
+              }
+            }
+            
+            return null;
+          };
+
+
+          // Transform event data to Webflow format - Blog Header ist das name Field
+          const webflowData = {
+            name: eventName,                                        // Blog Header = name Field
+            slug: eventName.toLowerCase()
+              .replace(/[^a-z0-9\s-]/g, '')                       // Entferne Sonderzeichen
+              .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
+              .replace(/-+/g, '-')                                // Entferne mehrfache -
+              .replace(/^-|-$/g, ''),                             // Entferne führende/trailing -
+            'uhrzeit': event.time,                                // Zeit
+            'event-datum': formatDateForWebflow(event),           // Korrekt formatiertes Datum
+            'preis': event.price || 'Eintritt frei',              // Preis
+            'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
+            'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
+            'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
+          };
+
+          // Update existing item
+          const result = await webflow.updateItem(
+            process.env.WEBFLOW_COLLECTION_ID,
+            existingItem.id,
+            webflowData
+          );
+
+          uploadedEvents.push({
+            eventName: eventName,
+            webflowId: result.id,
+            action: 'updated'
+          });
+
+          console.log(`✅ Updated: ${eventName}`);
+          
+        } else {
+          console.log(`➕ Event "${eventName}" is new. Creating...`);
+          
+
+          // Datum für Webflow Date Field formatieren
+          const formatDateForWebflow = (event) => {
+            // Versuche das Datum aus der Detailseite zu parsen
+            if (event.fullDateTime) {
+              // Entferne Zeilenumbrüche und extrahiere Datum
+              const cleanDate = event.fullDateTime.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
+              // Beispiel: "Dienstag, 28. Oktober 2025, 18:30 Uhr"
+              
+              // Konvertiere zu ISO Format für Webflow
+              try {
+                // Parse das deutsche Datum
+                const dateStr = cleanDate.match(/(\d{1,2})\.\s*(\w+)\s*(\d{4})/);
+                const timeStr = cleanDate.match(/(\d{1,2}):(\d{2})/);
+                
+                if (dateStr && timeStr) {
+                  const day = dateStr[1];
+                  const month = dateStr[2];
+                  const year = dateStr[3];
+                  const hour = timeStr[1];
+                  const minute = timeStr[2];
+                  
+                  // Monatsnamen zu Zahlen
+                  const monthMap = {
+                    'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
+                    'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
+                    'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
+                  };
+                  
+                  const monthNum = monthMap[month];
+                  if (monthNum) {
+                    return `${year}-${monthNum}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00.000Z`;
+                  }
+                }
+              } catch (e) {
+                console.log('Could not parse date:', cleanDate);
+              }
+            }
+            
+            // Fallback: Verwende das einfache Datum aus der Tabelle
+            if (event.date) {
+              // Format: DD.MM.YY -> YYYY-MM-DD
+              const parts = event.date.split('.');
+              if (parts.length === 3) {
+                const day = parts[0];
+                const month = parts[1];
+                const year = '20' + parts[2]; // 25 -> 2025
+                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000Z`;
+              }
+            }
+            
+            return null;
+          };
+
+
+          // Transform event data to Webflow format - Blog Header ist das name Field
+          const webflowData = {
+            name: eventName,                                        // Blog Header = name Field
+            slug: eventName.toLowerCase()
+              .replace(/[^a-z0-9\s-]/g, '')                       // Entferne Sonderzeichen
+              .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
+              .replace(/-+/g, '-')                                // Entferne mehrfache -
+              .replace(/^-|-$/g, ''),                             // Entferne führende/trailing -
+            'uhrzeit': event.time,                                // Zeit
+            'event-datum': formatDateForWebflow(event),           // Korrekt formatiertes Datum
+            'preis': event.price || 'Eintritt frei',              // Preis
+            'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
+            'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
+            'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
+          };
+
+          console.log(`Creating: ${eventName}...`);
+          const result = await webflow.createItem(
+            process.env.WEBFLOW_COLLECTION_ID,
+            webflowData
+          );
+
+          uploadedEvents.push({
+            eventName: eventName,
+            webflowId: result.id,
+            action: 'created'
+          });
+
+          // Publish the item automatically
+          try {
+            console.log(`🚀 Publishing: ${eventName}...`);
+            await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
+            console.log(`✅ Published: ${eventName}`);
+          } catch (publishError) {
+            console.error(`❌ Failed to publish ${eventName}:`, publishError.message);
+            console.log(`⚠️ Event ${eventName} uploaded but not published. You may need to publish manually.`);
+          }
+
+          console.log(`✅ Created: ${eventName}`);
+        }
+        
+        // Delay to avoid rate limits
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        console.error(`Error processing event ${eventName || 'unknown'}:`, error.message);
+        continue;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully processed ${uploadedEvents.length} events`,
+      events: uploadedEvents,
+      summary: {
+        total: scrapedData.events.length,
+        uploaded: uploadedEvents.length,
+        created: uploadedEvents.filter(e => e.action === 'created').length,
+        updated: uploadedEvents.filter(e => e.action === 'updated').length
+      }
+    });
+
+  } catch (error) {
+    console.error('Manual scrape process failed:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Start server
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});

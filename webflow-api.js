@@ -67,18 +67,54 @@ class WebflowAPI {
   /**
    * Get items from a collection
    * @param {string} collectionId - Webflow collection ID
-   * @returns {Promise<Array>} Collection items
+   * @param {Object} options - Optional query parameters (limit, offset, etc.)
+   * @returns {Promise<Object>} Response with items and pagination info
    */
-  async getItems(collectionId) {
+  async getItems(collectionId, options = {}) {
     try {
+      const params = {
+        limit: options.limit || 100,
+        offset: options.offset || 0
+      };
+      
       const response = await axios.get(
         `${this.baseURL}/collections/${collectionId}/items`,
+        { 
+          headers: this.headers,
+          params: params
+        }
+      );
+      
+      return {
+        items: response.data.items || [],
+        pagination: {
+          total: response.data.pagination?.total,
+          limit: response.data.pagination?.limit,
+          offset: response.data.pagination?.offset
+        }
+      };
+    } catch (error) {
+      console.error('Error getting items from Webflow:', error.response?.data || error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a single item by ID
+   * @param {string} collectionId - Webflow collection ID
+   * @param {string} itemId - Item ID
+   * @returns {Promise<Object>} Item data
+   */
+  async getItem(collectionId, itemId) {
+    try {
+      const response = await axios.get(
+        `${this.baseURL}/collections/${collectionId}/items/${itemId}`,
         { headers: this.headers }
       );
       
-      return response.data.items;
+      return response.data.items?.[0] || response.data;
     } catch (error) {
-      console.error('Error getting items from Webflow:', error.response?.data || error.message);
+      console.error('Error getting item from Webflow:', error.response?.data || error.message);
       throw error;
     }
   }
@@ -119,21 +155,33 @@ class WebflowAPI {
    */
   async findItemByName(collectionId, name) {
     try {
-      const response = await axios.get(
-        `${this.baseURL}/collections/${collectionId}/items`,
-        { 
-          headers: this.headers,
-          params: {
-            limit: 100 // Erhöhe das Limit um alle Items zu finden
-          }
+      // Suche durch alle Items (mit Pagination)
+      let offset = 0;
+      const limit = 100;
+      let foundItem = null;
+
+      while (!foundItem) {
+        const result = await this.getItems(collectionId, { limit, offset });
+        const items = result.items;
+
+        // Suche nach Item mit gleichem Namen (exakte Übereinstimmung)
+        foundItem = items.find(item => 
+          item.fieldData?.name === name || item.fieldData?.name?.trim() === name.trim()
+        );
+
+        // Wenn gefunden oder keine weiteren Items, stoppe die Suche
+        if (foundItem || items.length === 0) {
+          break;
         }
-      );
-      
-      // Suche nach Item mit gleichem Namen
-      const foundItem = response.data.items.find(item => 
-        item.fieldData.name === name
-      );
-      
+
+        // Prüfe ob es weitere Items gibt
+        if (result.pagination && offset + limit >= result.pagination.total) {
+          break;
+        }
+
+        offset += limit;
+      }
+
       return foundItem || null;
     } catch (error) {
       console.error('Error finding item in Webflow:', error.response?.data || error.message);

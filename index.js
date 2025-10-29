@@ -28,15 +28,9 @@ async function main() {
       try {
         const eventName = event.title || event.eventName;
         
-        // Prüfe ob Event bereits existiert
-        console.log(`Checking if "${eventName}" already exists...`);
-        const existingItem = await webflow.findItemByName(process.env.WEBFLOW_COLLECTION_ID, eventName);
+        console.log(`Creating event: ${eventName}...`);
         
-        if (existingItem) {
-          console.log(`🔄 Event "${eventName}" already exists. Updating...`);
-          
-
-          // Datum für Webflow Date Field formatieren
+        // Datum für Webflow Date Field formatieren
         const formatDateForWebflow = (event) => {
           // Versuche das Datum aus der Detailseite zu parsen
           if (event.fullDateTime) {
@@ -121,116 +115,9 @@ async function main() {
           'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
           'blog-rich-text': event.description || `${event.eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
           'imageurl': formatImageUrl(event.imageUrl),             // Vollständige Event-Bild URL
-        };
-
-          // Update existing item
-          const result = await webflow.updateItem(
-            process.env.WEBFLOW_COLLECTION_ID,
-            existingItem.id,
-            webflowData
-          );
-
-          uploadedEvents.push({
-            eventName: eventName,
-            webflowId: result.id,
-            action: 'updated'
-          });
-
-          console.log(`✅ Updated: ${eventName}`);
-          
-        } else {
-          console.log(`➕ Event "${eventName}" is new. Creating...`);
-          
-
-          // Datum für Webflow Date Field formatieren
-          const formatDateForWebflow = (event) => {
-            // Versuche das Datum aus der Detailseite zu parsen
-            if (event.fullDateTime) {
-              // Entferne Zeilenumbrüche und extrahiere Datum
-              const cleanDate = event.fullDateTime.replace(/\n/g, ' ').replace(/\s+/g, ' ').trim();
-              // Beispiel: "Dienstag, 28. Oktober 2025, 18:30 Uhr"
-              
-              // Konvertiere zu ISO Format für Webflow
-              try {
-                // Parse das deutsche Datum
-                const dateStr = cleanDate.match(/(\d{1,2})\.\s*(\w+)\s*(\d{4})/);
-                const timeStr = cleanDate.match(/(\d{1,2}):(\d{2})/);
-                
-                if (dateStr && timeStr) {
-                  const day = dateStr[1];
-                  const month = dateStr[2];
-                  const year = dateStr[3];
-                  const hour = timeStr[1];
-                  const minute = timeStr[2];
-                  
-                  // Monatsnamen zu Zahlen
-                  const monthMap = {
-                    'Januar': '01', 'Februar': '02', 'März': '03', 'April': '04',
-                    'Mai': '05', 'Juni': '06', 'Juli': '07', 'August': '08',
-                    'September': '09', 'Oktober': '10', 'November': '11', 'Dezember': '12'
-                  };
-                  
-                  const monthNum = monthMap[month];
-                  if (monthNum) {
-                    return `${year}-${monthNum}-${day.padStart(2, '0')}T${hour.padStart(2, '0')}:${minute}:00.000Z`;
-                  }
-                }
-              } catch (e) {
-                console.log('Could not parse date:', cleanDate);
-              }
-            }
-            
-            // Fallback: Verwende das einfache Datum aus der Tabelle
-            if (event.date) {
-              // Format: DD.MM.YY -> YYYY-MM-DD
-              const parts = event.date.split('.');
-              if (parts.length === 3) {
-                const day = parts[0];
-                const month = parts[1];
-                const year = '20' + parts[2]; // 25 -> 2025
-                return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00.000Z`;
-              }
-            }
-            
-            return null;
           };
 
-          // Konvertiere relative Bild-URL zu vollständiger URL
-          const formatImageUrl = (imageUrl) => {
-            if (!imageUrl) return '';
-            
-            // Wenn es bereits eine vollständige URL ist
-            if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
-              return imageUrl;
-            }
-            
-            // Wenn es ein relativer Pfad ist, füge die Domain hinzu
-            if (imageUrl.startsWith('/')) {
-              return `https://www.hessen-szene.de${imageUrl}`;
-            }
-            
-            // Falls es ein anderer Pfad ist
-            return `https://www.hessen-szene.de/${imageUrl}`;
-          };
-
-          // Transform event data to Webflow format - Blog Header ist das name Field
-          const webflowData = {
-            name: eventName,                                        // Blog Header = name Field
-            slug: eventName.toLowerCase()
-              .replace(/[^a-z0-9\s-]/g, '')                       // Entferne Sonderzeichen
-              .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
-              .replace(/-+/g, '-')                                // Entferne mehrfache -
-              .replace(/^-|-$/g, ''),                             // Entferne führende/trailing -
-            'uhrzeit': event.time,                                // Zeit
-            'event-datum': formatDateForWebflow(event),           // Korrekt formatiertes Datum
-            'preis': event.price || 'Eintritt frei',              // Preis
-            'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
-            'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
-            'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
-            'blog-image': blogImageId,                            // Uploaded Image Asset ID
-          };
-
-          console.log(`Creating: ${eventName}...`);
+        console.log(`Creating: ${eventName}...`);
           const result = await webflow.createItem(
             process.env.WEBFLOW_COLLECTION_ID,
             webflowData
@@ -252,8 +139,6 @@ async function main() {
             console.log(`⚠️ Event ${eventName} uploaded but not published. You may need to publish manually.`);
           }
 
-          console.log(`✅ Created: ${eventName}`);
-        }
         
         // Delay zwischen Uploads um Rate Limits zu vermeiden
         await new Promise(resolve => setTimeout(resolve, 1000));

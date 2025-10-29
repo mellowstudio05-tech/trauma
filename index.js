@@ -114,9 +114,7 @@ async function main() {
             .replace(/[^a-z0-9\s-]/g, '')                         // Entferne Sonderzeichen
             .replace(/\s+/g, '-')                                 // Ersetze Leerzeichen mit -
             .replace(/-+/g, '-')                                  // Entferne mehrfache -
-              .replace(/^-|-$/g, ''),                               // Entferne führende/trailing -
-          'tag': event.dayOfWeek || '',                             // Wochentag (z.B. "Montag")
-          'kategorien': event.category || '',                       // Kategorie (z.B. "Kneipe: Café / Offener Treff")
+            .replace(/^-|-$/g, ''),                               // Entferne führende/trailing -
           'uhrzeit': event.time,                                  // Zeit
           'event-datum': formatDateForWebflow(event),             // Korrekt formatiertes Datum
           'preis': event.price || 'Eintritt frei',                // Preis
@@ -223,8 +221,6 @@ async function main() {
               .replace(/\s+/g, '-')                               // Ersetze Leerzeichen mit -
               .replace(/-+/g, '-')                                // Entferne mehrfache -
               .replace(/^-|-$/g, ''),                             // Entferne führende/trailing -
-            'tag': event.dayOfWeek || '',                         // Wochentag (z.B. "Montag")
-            'kategorien': event.category || '',                   // Kategorie (z.B. "Kneipe: Café / Offener Treff")
             'uhrzeit': event.time,                                // Zeit
             'event-datum': formatDateForWebflow(event),           // Korrekt formatiertes Datum
             'preis': event.price || 'Eintritt frei',              // Preis

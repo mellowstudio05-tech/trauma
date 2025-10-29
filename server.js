@@ -68,9 +68,8 @@ app.get('/api/scrape', async (req, res) => {
     const uploadedEvents = [];
     
     for (const event of scrapedData.events) {
-      let eventName = 'Unknown Event';
       try {
-        eventName = event.title || event.eventName || 'Unknown Event';
+        const eventName = event.title || event.eventName;
         
         // Prüfe ob Event bereits existiert
         console.log(`Checking if "${eventName}" already exists...`);
@@ -251,9 +250,9 @@ app.get('/api/scrape', async (req, res) => {
             action: 'created'
           });
 
-          // Publish the item automatically
+          // Publish the item (mit besserem Error Handling)
           try {
-            console.log(`🚀 Publishing: ${eventName}...`);
+            console.log(`Publishing: ${eventName}...`);
             await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
             console.log(`✅ Published: ${eventName}`);
           } catch (publishError) {
@@ -306,9 +305,8 @@ app.post('/api/scrape', async (req, res) => {
     const uploadedEvents = [];
     
     for (const event of scrapedData.events) {
-      let eventName = 'Unknown Event';
       try {
-        eventName = event.title || event.eventName || 'Unknown Event';
+        const eventName = event.title || event.eventName;
         
         // Prüfe ob Event bereits existiert
         console.log(`Checking if "${eventName}" already exists...`);
@@ -489,9 +487,9 @@ app.post('/api/scrape', async (req, res) => {
             action: 'created'
           });
 
-          // Publish the item automatically
+          // Publish the item (mit besserem Error Handling)
           try {
-            console.log(`🚀 Publishing: ${eventName}...`);
+            console.log(`Publishing: ${eventName}...`);
             await webflow.publishItem(process.env.WEBFLOW_COLLECTION_ID, result.id);
             console.log(`✅ Published: ${eventName}`);
           } catch (publishError) {

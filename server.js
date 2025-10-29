@@ -141,8 +141,8 @@ app.get('/api/scrape', async (req, res) => {
             'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
             'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
             'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
-            'kategorie': event.category || '',                   // Kategorie aus Detailseite
-            'tag': event.dayOfWeek || '',                        // Wochentag (Montag, Dienstag, etc.)
+            // 'kategorie': event.category || '',                   // TODO: Korrekten Feldnamen in Webflow prüfen
+            // 'tag': event.dayOfWeek || '',                        // TODO: Korrekten Feldnamen in Webflow prüfen
           };
 
           console.log(`Creating: ${eventName}...`);
@@ -174,7 +174,11 @@ app.get('/api/scrape', async (req, res) => {
         
       } catch (error) {
         const errorEventName = event?.title || event?.eventName || 'unknown';
-        console.error(`Error processing event ${errorEventName}:`, error.message);
+        console.error(`❌ Error processing event ${errorEventName}:`, error.message);
+        console.error('Full error:', error);
+        if (error.response) {
+          console.error('API Error Response:', error.response.data);
+        }
         continue;
       }
     }
@@ -284,8 +288,8 @@ app.post('/api/scrape', async (req, res) => {
             'eintritt-frei': (event.price || '').toLowerCase().includes('frei'), // Switch
             'blog-rich-text': event.description || `${eventName}\n\nDatum: ${event.date}\nZeit: ${event.time}\nOrt: ${event.location}\nKategorie: ${event.category}`, // Beschreibung
             'imageurl': formatImageUrl(event.imageUrl),           // Vollständige Event-Bild URL
-            'kategorie': event.category || '',                   // Kategorie aus Detailseite
-            'tag': event.dayOfWeek || '',                        // Wochentag (Montag, Dienstag, etc.)
+            // 'kategorie': event.category || '',                   // TODO: Korrekten Feldnamen in Webflow prüfen
+            // 'tag': event.dayOfWeek || '',                        // TODO: Korrekten Feldnamen in Webflow prüfen
           };
 
           console.log(`Creating: ${eventName}...`);
@@ -317,7 +321,11 @@ app.post('/api/scrape', async (req, res) => {
         
       } catch (error) {
         const errorEventName = event?.title || event?.eventName || 'unknown';
-        console.error(`Error processing event ${errorEventName}:`, error.message);
+        console.error(`❌ Error processing event ${errorEventName}:`, error.message);
+        console.error('Full error:', error);
+        if (error.response) {
+          console.error('API Error Response:', error.response.data);
+        }
         continue;
       }
     }
